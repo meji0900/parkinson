@@ -1,0 +1,195 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+/*
+ * Breakpoints mirror the Metrivello reference:
+ *   phone   < 810px
+ *   md      810px – 1199px (tablet)
+ *   lg      1200px – 1599px (desktop)
+ *   xl      ≥ 1600px (wide desktop)
+ */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-md: 810px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1600px;
+
+  --font-sans: "Inter", "Inter Placeholder", sans-serif;
+
+  --color-ink: #101c19;
+  --color-muted: #596960;
+  --color-accent: #087443;
+  --color-accent-bright: #129761;
+  --color-lime: #b2f48c;
+  --color-forest: #0b1713;
+
+  --ease-framer: cubic-bezier(0.44, 0, 0.56, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    background: #fff;
+  }
+
+  body {
+    margin: 0;
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "blwf", "cv03", "cv04", "cv09", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-bright);
+    outline-offset: 3px;
+  }
+}
+
+/* Lenis smooth scroll */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+.lenis [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+/* ---------- Type scale (phone → tablet → desktop) ---------- */
+
+@utility text-display {
+  font-size: 40px;
+  line-height: 1.04;
+  letter-spacing: -3px;
+  font-weight: 500;
+  @media (width >= 810px) {
+    font-size: 52px;
+  }
+  @media (width >= 1200px) {
+    font-size: 68px;
+  }
+}
+
+@utility text-h2 {
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -1.8px;
+  font-weight: 500;
+  @media (width >= 810px) {
+    font-size: 36px;
+  }
+  @media (width >= 1200px) {
+    font-size: 44px;
+  }
+}
+
+@utility text-h3 {
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+  font-weight: 500;
+  @media (width >= 810px) {
+    font-size: 22px;
+  }
+  @media (width >= 1200px) {
+    font-size: 24px;
+  }
+}
+
+@utility text-lead {
+  font-size: 18px;
+  line-height: 1.55;
+  letter-spacing: -0.3px;
+  font-weight: 400;
+}
+
+@utility text-body {
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.2px;
+  font-weight: 400;
+}
+
+@utility text-small {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+@utility text-micro {
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: -0.22px;
+  font-weight: 400;
+}
+
+@utility text-eyebrow {
+  font-size: 11px;
+  line-height: 1.3;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+@utility text-button {
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: -0.1px;
+  font-weight: 500;
+}
+
+/* ---------- Layout helpers ---------- */
+
+/* Section padding: 64/20 → 80/32 → 100/40 */
+@utility section-pad {
+  padding: 64px 20px;
+  @media (width >= 810px) {
+    padding: 80px 32px;
+  }
+  @media (width >= 1200px) {
+    padding: 100px 40px;
+  }
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes ticker {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.ticker-track {
+  animation: ticker var(--ticker-duration, 80s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}

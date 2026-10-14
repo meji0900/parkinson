@@ -1,0 +1,4 @@
+/target/*
+!/target/idl/
+!/target/types/
+/.anchor
