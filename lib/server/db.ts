@@ -57,7 +57,28 @@ create table if not exists work_units (
 create table if not exists proposals (
   id integer primary key autoincrement, at text not null, by text, gene text, grp text, text text, ip text
 );
+create table if not exists windows (
+  registration text primary key, opened text not null, closes text not null,
+  agent_p real not null, agent_salt text not null, agent_commit text not null, closed text
+);
+create index if not exists windows_open on windows(closed, closes);
+create table if not exists forecasts (
+  registration text not null, who text not null, kind text not null, name text, p real not null, at text not null,
+  y integer, brier real, primary key (registration, who)
+);
+create index if not exists forecasts_who on forecasts(who, kind);
+create table if not exists agents (
+  id text primary key, name text not null, name_key text not null unique, about text, homepage text,
+  key_hash text not null unique, at text not null, ip text
+);
 `;
+
+// columns added after the first release, so ledgers made before them are upgraded in place
+const COLUMNS: [table: string, column: string, type: string][] = [
+  ["experiments", "agent", "text"],
+  ["work_units", "agent", "text"],
+  ["proposals", "agent", "text"],
+];
 
 const g = globalThis as unknown as { __jamesDb?: DatabaseSync };
 
@@ -68,6 +89,11 @@ export function db(): DatabaseSync {
   const d = new DatabaseSync(file);
   d.exec("pragma journal_mode = wal; pragma busy_timeout = 5000; pragma synchronous = normal;");
   d.exec(SCHEMA);
+  for (const [t, c, type] of COLUMNS) {
+    const have = d.prepare(`pragma table_info(${t})`).all() as { name: string }[];
+    if (!have.some((x) => x.name === c)) d.exec(`alter table ${t} add column ${c} ${type}`);
+  }
+  d.exec("create index if not exists experiments_agent on experiments(agent)");
   g.__jamesDb = d;
   return d;
 }

@@ -6,11 +6,16 @@ import { anchorReceipts, chainMode, resolveOnChain, sealOnChain, syncOnchainPred
 import { all, kvGet, kvSet, nowIso, one, run } from "@/lib/server/db";
 import { agentInterval, getStatus, pushEvent, setStatus } from "@/lib/server/events";
 import { getJSON } from "@/lib/server/http";
-import { investigate, type Hooks } from "./pipeline";
+import { appendRunEvents, investigate, narrateResult, type Hooks } from "./pipeline";
 import { MUSINGS } from "./voice";
 import { PD_ID } from "./readers";
 import { nextStudy, runStudy } from "@/lib/atlas/studies";
 import { sealGymIfReady } from "@/lib/atlas/gym";
+import { AXIS_SHORT } from "@/lib/atlas/cohort";
+import type { Experiment } from "@/lib/atlas/experiments";
+import { closeWindow, dueWindows, WINDOW_SECONDS } from "@/lib/atlas/forecasts";
+import type { AgentEvent } from "@/lib/server/events";
+import { sleep } from "@/lib/server/http";
 
 export const chainHooks: Hooks = { onSeal: sealOnChain, onTested: resolveOnChain };
 const PACE = Number(process.env.AGENT_PACE_MS ?? 650);
@@ -68,7 +73,7 @@ export const queueLength = () => one<{ n: number }>("select count(*) as n from q
 export async function workOne(gene: string, pace = PACE) {
   setStatus({ state: "working", gene });
   const rec = await investigate(gene, {
-    source: "live", pace, atlas: true, swarm: true, hooks: chainHooks,
+    source: "live", pace, atlas: true, swarm: true, hooks: chainHooks, window: WINDOW_SECONDS,
     emit: (e) => {
       pushEvent(e);
       if (e.k === "test" || e.k === "register") setStatus({ state: "testing", gene: e.gene ?? gene });
@@ -76,6 +81,50 @@ export async function workOne(gene: string, pace = PACE) {
     },
   });
   return rec;
+}
+
+// ---------------------------------------------------------------- forecast windows
+const pct = (p: number | null) => (p == null ? "n/a" : `${Math.round(p * 100)}%`);
+
+/** close every window whose time is up: test the prediction, reveal the agent's forecast, score everyone's */
+export async function closeWindows(pace = PACE) {
+  const due = dueWindows();
+  if (!due.length) return 0;
+  const before = getStatus();
+  const tested: Experiment[] = [];
+  for (const registration of due) {
+    const closed = closeWindow(registration);
+    if (!closed) continue;
+    const { exp, window: w } = closed;
+    setStatus({ state: "testing", gene: exp.gene });
+    const events: AgentEvent[] = [];
+    const say = async (e: Omit<AgentEvent, "gene">) => {
+      const ev = { gene: exp.gene, ...e } as AgentEvent;
+      events.push(ev);
+      pushEvent(ev);
+      if (pace) await sleep(pace);
+    };
+    const others = w.forecasts.length;
+    const people = w.crowd.n, agents = others - people;
+    const who = others
+      ? `${people ? `${people} ${people === 1 ? "person" : "people"}${w.crowd.p != null ? ` (crowd ${pct(w.crowd.p)})` : ""}` : ""}${people && agents ? " and " : ""}${agents ? `${agents} ${agents === 1 ? "agent" : "agents"}` : ""} forecast it`
+      : "nobody forecast it";
+    await say({ k: "forecast", x: `the window on ${exp.gene} (${AXIS_SHORT[exp.axis]}, ${exp.group}) closed: ${who}. my sealed forecast was ${pct(w.house.p)}; salt ${w.house.salt.slice(0, 8)}…, and it hashes to the seal.` });
+    await narrateResult(exp, { swarm: true }, say);
+    const beat = w.forecasts.filter((f) => f.brier < w.house.brier).sort((a, b) => a.brier - b.brier);
+    const names = beat.slice(0, 3).map((f) => `${f.name ?? "an anonymous forecaster"} at ${pct(f.p)}`).join(", ");
+    await say({
+      k: "forecast",
+      x: others
+        ? `scored (Brier, lower is better): me ${w.house.brier.toFixed(3)}${w.crowd.brier != null ? `, the crowd ${w.crowd.brier.toFixed(3)}` : ""}. ${beat.length ? `closer than me: ${names}${beat.length > 3 ? ` and ${beat.length - 3} more` : ""}.` : "nobody came closer than me this time."}`
+        : `scored: me ${w.house.brier.toFixed(3)} (Brier, lower is better).`,
+    });
+    appendRunEvents(exp.gene, events);
+    tested.push(exp);
+  }
+  await resolveOnChain(tested).catch((e) => console.error("[james] resolve", e?.message ?? e));
+  setStatus({ ...before });
+  return tested.length;
 }
 
 // ---------------------------------------------------------------- nightly notebook
@@ -124,6 +173,7 @@ async function step() {
   try {
     const now = new Date();
     if (Date.now() - w.lastChore > 5 * 60_000) { w.lastChore = Date.now(); await chores(); }
+    await closeWindows();
     if (now.getUTCHours() === 2 && now.getUTCMinutes() >= 30 && kvGet("nightly_last", "") !== now.toISOString().slice(0, 10)) {
       kvSet("nightly_last", now.toISOString().slice(0, 10));
       setStatus({ state: "working", gene: "nightly run" });

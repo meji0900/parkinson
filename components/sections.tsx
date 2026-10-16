@@ -234,7 +234,7 @@ export function ExperimentRows({ rows, limit = 14 }: { rows: Experiment[]; limit
           <span className="ex-gene"><Link href={`/gene/${r.gene}`}><i>{r.gene}</i></Link> in {r.group}, {r.axis}</span>
           <span className="ex-nums">{fmtStat(r.discovery)} → {fmtStat(r.replication)}</span>
           <span className="ex-verdict">
-            {r.passed ? "held" : r.receipt ? <Link href={`/receipt/${r.receipt}`}>receipt {String(r.receipt).padStart(4, "0")}</Link> : r.state === "sealed" ? "sealed" : "failed"}
+            {r.passed ? "held" : r.receipt ? <Link href={`/receipt/${r.receipt}`}>receipt {String(r.receipt).padStart(4, "0")}</Link> : r.state === "sealed" ? <Link href="/forecast">sealed, forecast it</Link> : "failed"}
           </span>
         </li>
       ))}

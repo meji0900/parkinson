@@ -3,6 +3,7 @@
 import { AXIS_LABEL, AXIS_SHORT, cohorts, type Axis } from "@/lib/atlas/cohort";
 import { seal, test, type Experiment } from "@/lib/atlas/experiments";
 import { fmtE, fmtP, type Stat } from "@/lib/atlas/stats";
+import { openWindow } from "@/lib/atlas/forecasts";
 import { openCase } from "@/lib/atlas/swarm";
 import { all, json, nowIso, one, run } from "@/lib/server/db";
 import type { AgentEvent } from "@/lib/server/events";
@@ -44,7 +45,11 @@ export function lastRun(symbol: string) {
   return one<{ at: string; score: number }>("select at, score from runs where symbol = ? order by at desc limit 1", symbol) ?? null;
 }
 
-export type Options = { emit: Emit; source: string; pace?: number; atlas?: boolean; swarm?: boolean; hooks?: Hooks };
+export type Options = {
+  emit: Emit; source: string; pace?: number; atlas?: boolean; swarm?: boolean; hooks?: Hooks;
+  /** seconds the sealed predictions stay open for forecasts before they are tested; 0 tests them at once */
+  window?: number;
+};
 
 export async function investigate(raw: string, opts: Options): Promise<RunRecord | null> {
   const t0 = Date.now();
@@ -161,7 +166,7 @@ async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
   for (const axis of ["braak", "resilience"] as Axis[]) {
     const { exp, repeat } = seal({ gene: G, group, axis, source: "agent" });
     if (repeat) {
-      await say({ k: "register", x: `${G} · ${group} · ${axis} was sealed before (${exp.registration.slice(0, 12)}); its result stands: ${exp.reason ?? "pending"}.` });
+      await say({ k: "register", x: `${G} · ${group} · ${axis} was sealed before (${exp.registration.slice(0, 12)}); ${exp.state === "sealed" ? "it is still open for forecasts" : `its result stands: ${exp.reason}`}.` });
       continue;
     }
     await say({ k: "register", x: `sealed ${exp.registration.slice(0, 16)}: ${G} ${AXIS_LABEL[axis]} in ${group}` });
@@ -169,24 +174,45 @@ async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
   }
   // both seals share one transaction, and both results the next: the fee is per signature, not per memo
   await opts.hooks?.onSeal?.(sealed.map((s) => s.exp)).catch(() => undefined);
+  if (opts.window && sealed.length) {
+    // the live agent leaves its predictions sealed for a while so people and other agents can forecast them first
+    const open = sealed.map((s) => openWindow(s.exp, opts.window));
+    await say({
+      k: "forecast",
+      x: `forecasts are open on ${sealed.length === 1 ? "it" : "both"} until ${open[0].closes.slice(11, 16)} UTC. my own forecasts are sealed as ${open.map((o) => o.commit.slice(0, 10)).join(" and ")}; the numbers come out when the window closes. yours go in on the forecast page.`,
+    });
+    return;
+  }
   const tested: Experiment[] = [];
-  for (const { exp, axis } of sealed) {
+  for (const { exp } of sealed) {
     const t = test(exp.registration);
     tested.push(t);
-    await say({ k: "test", x: `${AXIS_SHORT[axis]}: discovery half ${fmtStat(t.discovery)} → held-out half ${fmtStat(t.replication)}` });
-    if (t.passed) {
-      await say({ k: "pass", x: `${G} in ${group} ${AXIS_LABEL[axis]}: held in both halves.` });
-      continue;
-    }
-    await say({ k: "receipt", x: `${t.reason}. receipt ${pad(t.receipt)}.`, receipt: t.receipt });
-    if (opts.swarm && t.receipt) {
-      await say({ k: "swarm", fac: "swarm", x: `six analysts open a case on receipt ${pad(t.receipt)}.` });
-      const sc = openCase(t.receipt, t);
-      for (const a of sc.agents) await say({ k: "swarm", fac: a.agent, x: a.said });
-      await say({ k: "swarm", fac: "swarm", x: sc.outcome });
-    }
+    await narrateResult(t, opts, say);
   }
   await opts.hooks?.onTested?.(tested).catch(() => undefined);
+}
+
+/** what the console says about a tested prediction: both halves, then a pass, or a receipt and the swarm's case */
+export async function narrateResult(t: Experiment, opts: { swarm?: boolean }, say: Say) {
+  await say({ k: "test", x: `${AXIS_SHORT[t.axis]}: discovery half ${fmtStat(t.discovery)} → held-out half ${fmtStat(t.replication)}` });
+  if (t.passed) {
+    await say({ k: "pass", x: `${t.gene} in ${t.group} ${AXIS_LABEL[t.axis]}: held in both halves.` });
+    return;
+  }
+  await say({ k: "receipt", x: `${t.reason}. receipt ${pad(t.receipt)}.`, receipt: t.receipt });
+  if (opts.swarm && t.receipt) {
+    await say({ k: "swarm", fac: "swarm", x: `six analysts open a case on receipt ${pad(t.receipt)}.` });
+    const sc = openCase(t.receipt, t);
+    for (const a of sc.agents) await say({ k: "swarm", fac: a.agent, x: a.said });
+    await say({ k: "swarm", fac: "swarm", x: sc.outcome });
+  }
+}
+
+/** add events to the stored record of a gene's latest run, so a replay shows what happened after the run itself */
+export function appendRunEvents(symbol: string, more: AgentEvent[]) {
+  const r = one<{ id: number; events: string }>("select id, events from runs where symbol = ? order by id desc limit 1", symbol);
+  if (!r) return;
+  run("update runs set events = ? where id = ?", JSON.stringify([...json<AgentEvent[]>(r.events, []), ...more]), r.id);
 }
 
 // ---------------------------------------------------------------- stored runs

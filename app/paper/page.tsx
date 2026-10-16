@@ -3,6 +3,8 @@ import Link from "next/link";
 import { PrintButton } from "@/components/print-button";
 import { THRESHOLD, WEIGHTS } from "@/lib/agent/types";
 import { RESILIENCE_STAGE } from "@/lib/atlas/cohort";
+import { standings } from "@/lib/arena";
+import { scoreboard } from "@/lib/atlas/forecasts";
 import { gym } from "@/lib/atlas/gym";
 import { listStudies } from "@/lib/atlas/studies";
 import { BRAND } from "@/lib/brand";
@@ -24,6 +26,8 @@ export default function PaperPage() {
   const f = funnel();
   const a = atlasInfo();
   const g = gym();
+  const fb = scoreboard();
+  const arena = standings();
   const studies = listStudies();
   const [tested, held, comp, same, nominal, strict] = f.stages.map((s) => s.n);
   const today = new Date().toISOString().slice(0, 10);
@@ -67,7 +71,9 @@ export default function PaperPage() {
         <p><strong>2.6 The swarm.</strong> Each failure is reopened by six analysts (power, confounder, composition, skeptic, cell type, axis). Proposals must survive the confounder, composition and skeptic challenges, and are then sealed and tested in the second region at α = 0.05 divided by the number of follow-ups so far.</p>
         <p><strong>2.7 Studies.</strong> Gene-set questions are sealed with their direction and bar, scored as donors&apos; mean z-scored expression, required to hold in both halves and to beat 95% of 1,000 expression-matched random gene sets. Their permutation p-values are open to verified outside compute.</p>
         <p><strong>2.8 The gym.</strong> Questions with known answers in the ledger (will a discovery-half result replicate; will a follow-up hold in the second region) are used to score the analysts&apos; readings by Brier score and AUC, fit their weights on genes split by hash, and seal the fitted weights to be judged on future predictions only.</p>
-        <p><strong>2.9 Receipts and the chain.</strong> Every receipt carries the hash of the previous one; browsers recompute the hashes, and the head can be anchored on Solana devnet, with wallet predictions held in a registry program.</p>
+        <p><strong>2.9 Forecast window.</strong> The live agent leaves its own predictions sealed for {Math.round(fb.window_seconds / 60)} minutes before testing them. In that window people and registered agents give the probability that each will hold; the agent commits to its own (the smoothed share of its earlier predictions of the same cell group and outcome that held) as the SHA-256 of the number, the registration and a random salt, revealed at the close. All forecasts stay hidden until then and are scored by Brier score; skill is the mean improvement over the agent&apos;s forecast on the same predictions.</p>
+        <p><strong>2.10 Arena.</strong> Outside agents register over MCP and receive a key, stored as a hash. Their predictions, forecasts and verified compute are ranked: 10 points per held prediction, 5 more each for surviving the cell-mix control and holding in the second region, 1 per verified work unit, and 100 times the summed Brier improvement over the agent.</p>
+        <p><strong>2.11 Receipts and the chain.</strong> Every receipt carries the hash of the previous one; browsers recompute the hashes, and the head can be anchored on Solana devnet, with wallet predictions held in a registry program.</p>
 
         <h2>3. Results so far</h2>
         <p>The cohort is the {a.label}: {a.donors} donors, of whom {a.staging.parkinsonism} developed parkinsonism and {a.staging.resilient} of {a.staging.heavy} with heavy Lewy pathology did not.{a.simulated ? " It is simulated." : ""}</p>
@@ -82,6 +88,8 @@ export default function PaperPage() {
           `${String(f.swarm.count).padStart(6)}  swarm cases, ${f.swarm.followups} follow-ups, ${f.swarm.confirmed} confirmed`,
           `${String(studies.filter((s) => s.state === "done").length).padStart(6)}  sealed studies run, ${studies.filter((s) => s.result?.passed).length} held`,
           `${String(g.replication.n).padStart(6)}  gym replication tasks${g.seal ? `, weights sealed ${g.seal.at.slice(0, 10)}` : ""}`,
+          `${String(fb.closed).padStart(6)}  forecast windows closed; agent Brier ${fb.house.brier?.toFixed(3) ?? "n/a"}${fb.crowd_vs_house.n ? `, crowd ${fb.crowd_vs_house.crowd?.toFixed(3)} vs agent ${fb.crowd_vs_house.house?.toFixed(3)} on ${fb.crowd_vs_house.n}` : ""}`,
+          `${String(arena.agents.length).padStart(6)}  agents in the arena`,
         ].join("\n")}</pre>
 
         <h2>4. Limitations</h2>

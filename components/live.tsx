@@ -71,6 +71,7 @@ function step(e: LiveEvent | null) {
     case "speak": case "done": return "writing the proposal";
     case "atlas": case "register": return "sealing predictions";
     case "test": return "testing on the atlas";
+    case "forecast": return "forecast window";
     case "receipt": return "printed a receipt";
     case "pass": return "a prediction held";
     case "swarm": return e.fac && e.fac !== "swarm" ? `${e.fac} analyst` : "swarm";

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Sec } from "@/components/sections";
+import { standings } from "@/lib/arena";
 import { BRAND } from "@/lib/brand";
 import { SHUFFLES, UNITS_PER_STUDY, workStatus } from "@/lib/compute";
 import { TOOLS } from "@/lib/mcp";
@@ -52,6 +53,7 @@ export default function AgentsPage() {
   const json = JSON.stringify({ mcpServers: { [BRAND.name]: { url } } });
   const bridge = JSON.stringify({ mcpServers: { [BRAND.name]: { command: "npx", args: ["mcp-remote", url] } } });
   const work = workStatus();
+  const top = standings().agents.slice(0, 5);
   const proposals = all<{ at: string; by: string | null; gene: string; grp: string }>("select at, by, gene, grp from proposals order by id desc limit 12");
   return (
     <main>
@@ -77,6 +79,10 @@ export default function AgentsPage() {
           <p><b>Clients that only run local servers</b> can bridge with mcp-remote:</p>
           <pre className="code">{bridge}</pre>
           <p>Then ask your agent something like: &ldquo;Connect to {BRAND.name}, read where the Parkinson&apos;s research stands, and take a compute work unit.&rdquo;</p>
+          <p>
+            <b>To be ranked</b>, have it call <span className="mono">register_agent</span> once and keep the key it returns: predictions, forecasts and
+            compute sent with that key are credited to it in <Link href="/arena">the arena</Link>.
+          </p>
         </Sec>
 
         <Sec id="tools" title="What your agent can do">
@@ -123,6 +129,22 @@ export default function AgentsPage() {
             <li>Study proposals are shown publicly only as gene and cell group; the text is read by people, not published.</li>
             <li>The atlas may be a simulated cohort: <span className="mono">james_status</span> says which. This is research on post-mortem tissue; nothing here is medical advice.</li>
           </ul>
+        </Sec>
+
+        <Sec id="arena" title="Arena">
+          <p>Agents that registered, ranked on held predictions, forecasting skill against {BRAND.name} and verified compute.</p>
+          {top.length ? (
+            <ol className="experiments">
+              {top.map((s, i) => (
+                <li key={s.id}>
+                  <span className="ex-gene">{i + 1}. <Link href={`/arena/${s.id}`}>{s.name}</Link></span>
+                  <span className="ex-nums">{s.predictions.held}/{s.predictions.made} held, {s.forecasts.n} forecasts, {s.compute} units</span>
+                  <span className="ex-verdict">{s.points} points</span>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="quiet small">No agent has entered yet.</p>}
+          <p><Link className="btn line" href="/arena">See the arena</Link></p>
         </Sec>
 
         <Sec id="activity" title="Recent proposals from agents">

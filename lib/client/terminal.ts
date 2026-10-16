@@ -102,6 +102,7 @@ export class Terminal {
       case "atlas": return this.type([["   ◇ ", "dim"], ["atlas".padEnd(12), "who"], [e.x, "dim"]], id, 5);
       case "register": return this.type([["   ◇ ", "dim"], ["atlas".padEnd(12), "who"], [e.x]], id, 6);
       case "test": return this.type([["   ◇ ", "dim"], ["atlas".padEnd(12), "who"], ["│ " + e.x]], id, 6);
+      case "forecast": return this.type([["   ◈ ", "dim"], ["forecast".padEnd(12), "who"], [e.x]], id, 6);
       case "pass": return this.say(e.x, id, "ok", 10);
       case "study": {
         if (e.receipt) this.hooks.onReceipt?.();

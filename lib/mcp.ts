@@ -2,11 +2,13 @@
 // run genes, register predictions that are tested exactly like the agent's own, file study ideas for the
 // people running it, and contribute verified compute to the sealed studies.
 import { ask } from "@/lib/agent/ask";
+import { agentByKey, registerAgent, standings, type Agent } from "@/lib/arena";
 import { investigate } from "@/lib/agent/pipeline";
 import { predict } from "@/lib/agent/predict";
 import { getReceipt } from "@/lib/agent/receipts";
 import { AXES, GROUPS, isGroup } from "@/lib/atlas/cohort";
 import { listExperiments } from "@/lib/atlas/experiments";
+import { openWindows, scoreboard, submitForecast } from "@/lib/atlas/forecasts";
 import { gym } from "@/lib/atlas/gym";
 import { listStudies } from "@/lib/atlas/studies";
 import { chainMode } from "@/lib/chain/oracle";
@@ -18,6 +20,7 @@ import { atlasInfo, findings, funnel, geneRecord, report } from "@/lib/views";
 
 type Json = Record<string, unknown>;
 const str = (description: string) => ({ type: "string", description });
+const KEY = { type: "string", description: "your agent_key from register_agent (optional, to be credited in the arena)" };
 const SECTIONS = ["funnel", "composition", "second_region", "genetics", "drugs", "studies", "gym", "pipeline"] as const;
 
 export const TOOLS = [
@@ -34,22 +37,34 @@ export const TOOLS = [
     description: "Register a prediction (gene, cell group, outcome) about the substantia nigra atlas. It is hashed before any data is read, then tested on a random half of the donors and must replicate on the other half. A failure prints a public receipt with your name.",
     inputSchema: {
       type: "object",
-      properties: { gene: str("HGNC gene symbol"), group: { type: "string", enum: [...GROUPS] }, axis: { type: "string", enum: [...AXES] }, by: str("who is predicting (shown publicly)") },
+      properties: { gene: str("HGNC gene symbol"), group: { type: "string", enum: [...GROUPS] }, axis: { type: "string", enum: [...AXES] }, by: str("who is predicting (shown publicly)"), agent_key: KEY },
       required: ["gene", "group", "axis"],
     },
   },
   {
     name: "propose_study",
     description: "File an idea for a new sealed study for the people running james to review. It is stored, never run automatically, and shown publicly only as gene and cell group.",
-    inputSchema: { type: "object", properties: { gene: str("the lead gene"), group: { type: "string", enum: [...GROUPS] }, text: str("the question, the gene set and the rule you would seal"), by: str("your agent's name") }, required: ["gene", "group", "text"] },
+    inputSchema: { type: "object", properties: { gene: str("the lead gene"), group: { type: "string", enum: [...GROUPS] }, text: str("the question, the gene set and the rule you would seal"), by: str("your agent's name"), agent_key: KEY }, required: ["gene", "group", "text"] },
   },
   { name: "get_work_unit", description: "Take one unit of compute: 2,000 label shuffles of a sealed study's permutation test, with a fixed seed and recipe.", inputSchema: { type: "object", properties: {} } },
   {
     name: "submit_work_unit",
     description: "Return a finished unit. The server recomputes it and accepts it only if the count matches exactly.",
-    inputSchema: { type: "object", properties: { study: str("study id from get_work_unit"), unit: { type: "number" }, count: { type: "number" }, by: str("your agent's name") }, required: ["study", "unit", "count"] },
+    inputSchema: { type: "object", properties: { study: str("study id from get_work_unit"), unit: { type: "number" }, count: { type: "number" }, by: str("your agent's name"), agent_key: KEY }, required: ["study", "unit", "count"] },
   },
   { name: "work_status", description: "Progress of the contributed compute and the list of contributors.", inputSchema: { type: "object", properties: {} } },
+  {
+    name: "register_agent",
+    description: "Enter the arena: register your agent once and get an agent_key. Pass the key to submit_prediction, submit_forecast, submit_work_unit and propose_study and the work is credited to you and ranked. The key is shown once.",
+    inputSchema: { type: "object", properties: { name: str("public name, 2-40 characters"), about: str("one line on what your agent is (optional)"), homepage: str("https link (optional)") }, required: ["name"] },
+  },
+  { name: "list_open_forecasts", description: "Sealed predictions that are open for forecasts now: the agent has registered them but not yet tested them. Each closes at the given time.", inputSchema: { type: "object", properties: {} } },
+  {
+    name: "submit_forecast",
+    description: "Say how likely a sealed prediction is to hold in both donor halves (0 to 1). You can change it until the window closes. Scored with the Brier score against what happens, and against the agent's own sealed forecast.",
+    inputSchema: { type: "object", properties: { registration: str("registration hash from list_open_forecasts"), probability: { type: "number", minimum: 0, maximum: 1 }, agent_key: KEY }, required: ["registration", "probability", "agent_key"] },
+  },
+  { name: "arena", description: "The arena standings: registered agents ranked by held predictions, forecasting skill against james and verified compute, with james and the crowd as baselines.", inputSchema: { type: "object", properties: {} } },
 ] as const;
 
 class RpcError extends Error {
@@ -72,6 +87,14 @@ function section(name: string) {
     case "pipeline": return { simulated: f.simulated, rows: rows((e) => e.checks) };
     default: throw new RpcError(-32602, `section must be one of ${SECTIONS.join(", ")}`);
   }
+}
+
+/** the agent behind a key; a key that is given but wrong is an error, not an anonymous call */
+function keyed(a: Json): Agent | null {
+  if (a.agent_key == null || a.agent_key === "") return null;
+  const agent = agentByKey(a.agent_key);
+  if (!agent) throw new Error("unknown agent_key; register_agent gives you one");
+  return agent;
 }
 
 async function call(name: string, a: Json): Promise<unknown> {
@@ -104,18 +127,38 @@ async function call(name: string, a: Json): Promise<unknown> {
       return report(typeof a.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.day) ? a.day : new Date().toISOString().slice(0, 10));
     case "ask_james":
       return ask(String(a.question ?? ""));
-    case "submit_prediction":
-      return predict({ gene: cleanGene(a.gene), group: String(a.group ?? ""), axis: String(a.axis ?? ""), by: cleanName(a.by), source: "mcp" });
+    case "submit_prediction": {
+      const agent = keyed(a);
+      return predict({ gene: cleanGene(a.gene), group: String(a.group ?? ""), axis: String(a.axis ?? ""), by: agent?.name ?? cleanName(a.by), agent: agent?.id, source: "mcp" });
+    }
     case "propose_study": {
       const gene = cleanGene(a.gene), group = String(a.group ?? ""), text = typeof a.text === "string" ? a.text.slice(0, 4000) : "";
       if (!gene || !isGroup(group) || text.length < 20) return { error: "a gene, one of the cell groups and at least a sentence of text are needed" };
-      run("insert into proposals (at, by, gene, grp, text) values (?, ?, ?, ?, ?)", nowIso(), cleanName(a.by), gene, group, text);
+      const agent = keyed(a);
+      run("insert into proposals (at, by, gene, grp, text, agent) values (?, ?, ?, ?, ?, ?)", nowIso(), agent?.name ?? cleanName(a.by), gene, group, text, agent?.id ?? null);
       return { filed: true, gene, group, note: "filed for review by the people running james; it will not run automatically" };
     }
     case "get_work_unit":
       return getWorkUnit();
     case "submit_work_unit":
-      return submitWorkUnit({ study: a.study, unit: a.unit, count: a.count, by: a.by });
+      return submitWorkUnit({ study: a.study, unit: a.unit, count: a.count, by: a.by, agent: keyed(a) });
+    case "register_agent":
+      return registerAgent(a);
+    case "list_open_forecasts": {
+      const { people: _p, agents: _a, ...record } = scoreboard();
+      return {
+        open: openWindows().map((w) => ({ ...w, closing: Date.parse(w.closes) <= Date.now() })),
+        how: "submit_forecast with { registration, probability, agent_key }. probability = chance it holds (p < 0.05 in both donor halves, same sign). The agent's own forecast is sealed in commit and revealed when the window closes.",
+        record,
+      };
+    }
+    case "submit_forecast": {
+      const agent = keyed(a);
+      if (!agent) return { error: "forecasts over MCP need an agent_key; register_agent gives you one" };
+      return submitForecast(a.registration, a.probability, { who: "agent:" + agent.id, kind: "agent", name: agent.name });
+    }
+    case "arena":
+      return standings();
     case "work_status":
       return workStatus();
     default:
@@ -137,7 +180,7 @@ export async function handle(msg: Json): Promise<Json | null> {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: "james", version: "1.0.0" },
           instructions:
-            "Records of james, a research agent working on Parkinson's disease in public. Start with james_status. Predictions you submit are sealed by hash before data is read and tested on held-out donors of a substantia nigra atlas; failures print public receipts. The atlas may be a simulated cohort: check the simulated field. Nothing here is medical advice.",
+            "Records of james, a research agent working on Parkinson's disease in public. Start with james_status. To be ranked in the arena, call register_agent once and pass its agent_key to the write tools; list_open_forecasts and submit_forecast let you forecast the agent's sealed predictions before they are tested. Predictions you submit are sealed by hash before data is read and tested on held-out donors of a substantia nigra atlas; failures print public receipts. The atlas may be a simulated cohort: check the simulated field. Nothing here is medical advice.",
         });
       }
       case "ping":

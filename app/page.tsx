@@ -10,8 +10,9 @@ import { Predict } from "@/components/predict";
 import { ReceiptStrip } from "@/components/receipts";
 import { ExperimentRows, Funnel, Merged, NotebookEntries, Sec, SwarmCases, Weights } from "@/components/sections";
 import { runsFor } from "@/lib/agent/pipeline";
-import { RESILIENCE_STAGE } from "@/lib/atlas/cohort";
+import { AXIS_SHORT, RESILIENCE_STAGE } from "@/lib/atlas/cohort";
 import { listExperiments } from "@/lib/atlas/experiments";
+import { openWindows, scoreboard } from "@/lib/atlas/forecasts";
 import { listStudies, STUDIES } from "@/lib/atlas/studies";
 import { listCases } from "@/lib/atlas/swarm";
 import { chainMode } from "@/lib/chain/oracle";
@@ -36,6 +37,8 @@ export default async function Home() {
   const last = lastSymbol ? runsFor(lastSymbol, 1)[0] ?? null : null;
   const studies = listStudies();
   const st = atlas.staging;
+  const open = openWindows();
+  const fb = scoreboard();
 
   return (
     <main>
@@ -67,6 +70,32 @@ export default async function Home() {
           nigra, tests them, and comments on what it sees. Type a gene symbol to give it one, or ask it a question.
         </p>
         <Console examples={EXAMPLES} region={atlas.region.replace(" pars compacta", "")} />
+      </Sec>
+
+      <Sec id="forecast" title="Forecast">
+        <p>
+          Before it tests its own predictions, the agent leaves them sealed for {every(fb.window_seconds)}. Anyone can say how likely each one is to
+          hold, and the agent seals its own forecast as a hash at the same moment. When the window closes the test runs and every forecast is
+          scored: yours, the crowd&apos;s, other agents&apos; and the agent&apos;s.
+        </p>
+        {open.length ? (
+          <ol className="experiments">
+            {open.slice(0, 4).map((w) => (
+              <li key={w.registration}>
+                <span className="ex-gene"><Link href={`/gene/${w.gene}`}><i>{w.gene}</i></Link> in {w.group}, {AXIS_SHORT[w.axis]}</span>
+                <span className="ex-nums">closes {w.closes.slice(11, 16)} UTC, {w.forecasts} in</span>
+                <span className="ex-verdict"><Link href="/forecast">forecast it</Link></span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="quiet small">Nothing is open this minute; the next two are sealed with the next gene.</p>
+        )}
+        <p className="chain">
+          <b>{fb.closed}</b> windows closed, <b>{fb.held}</b> held.{" "}
+          {fb.crowd_vs_house.n ? <>Where people forecast, the crowd scores <b>{fb.crowd_vs_house.crowd?.toFixed(3)}</b> and the agent <b>{fb.crowd_vs_house.house?.toFixed(3)}</b> (Brier, lower is better).</> : <>No window has had a forecast from people yet.</>}
+        </p>
+        <p><Link className="btn line" href="/forecast">Open the forecast board</Link></p>
       </Sec>
 
       <Sec id="predict" title="Make a prediction">

@@ -17,14 +17,16 @@ export const BRAND = {
 export const NAV = [
   { href: "/#live", label: "Live" },
   { href: "/#predict", label: "Predict" },
+  { href: "/forecast", label: "Forecast" },
   { href: "/findings", label: "Findings" },
-  { href: "/gym", label: "Gym" },
+  { href: "/arena", label: "Arena" },
   { href: "/agents", label: "Agents" },
+  { href: "/gym", label: "Gym" },
   { href: "/report", label: "Report" },
-  { href: "/case-studies", label: "Case studies" },
 ] as const;
 
 export const MORE = [
+  { href: "/case-studies", label: "Case studies" },
   { href: "/parkinsons", label: "Parkinson's, 1817 to now" },
   { href: "/program", label: "The lysosome program" },
   { href: "/paper", label: "Paper" },

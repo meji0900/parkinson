@@ -83,7 +83,7 @@ export function getWorkUnit() {
   };
 }
 
-export function submitWorkUnit(input: { study?: unknown; unit?: unknown; count?: unknown; by?: unknown }) {
+export function submitWorkUnit(input: { study?: unknown; unit?: unknown; count?: unknown; by?: unknown; agent?: { id: string; name: string } | null }) {
   const st = typeof input.study === "string" ? getStudy(input.study) : null;
   if (!st) return { accepted: false, error: "unknown study" };
   const unit = Number(input.unit), count = Number(input.count);
@@ -97,8 +97,8 @@ export function submitWorkUnit(input: { study?: unknown; unit?: unknown; count?:
   if (!data) return { accepted: false, error: "the study has no data to permute" };
   const expected = runUnit(data.a, data.b, data.observed, row.seed, row.shuffles);
   if (expected !== count) return { accepted: false, error: "the count does not match the server's recomputation; check the recipe" };
-  const by = cleanName(input.by) ?? "anonymous agent";
-  run("update work_units set count = ?, by = ?, at = ? where study = ? and unit = ?", count, by, nowIso(), st.registration, unit);
+  const by = input.agent?.name ?? cleanName(input.by) ?? "anonymous agent";
+  run("update work_units set count = ?, by = ?, agent = ?, at = ? where study = ? and unit = ?", count, by, input.agent?.id ?? null, nowIso(), st.registration, unit);
   return { accepted: true, study: st.id, unit, count, by, status: workStatus() };
 }
 

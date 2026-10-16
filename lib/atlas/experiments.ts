@@ -38,6 +38,8 @@ export type Experiment = {
   resolve_tx: string | null;
   reward_tx: string | null;
   chain_status: string | null;
+  /** the registered arena agent that made it, if any */
+  agent: string | null;
 };
 
 type Row = Omit<Experiment, "group" | "passed" | "discovery" | "replication" | "checks"> & {
@@ -56,9 +58,10 @@ export function getExperiment(registration: string): Experiment | null {
   return r ? toExp(r) : null;
 }
 
-export function listExperiments(opts: { gene?: string; wallet?: string; limit?: number; source?: string } = {}): Experiment[] {
+export function listExperiments(opts: { gene?: string; wallet?: string; agent?: string; limit?: number; source?: string } = {}): Experiment[] {
   const where: string[] = [], args: string[] = [];
   if (opts.gene) { where.push("gene = ?"); args.push(opts.gene); }
+  if (opts.agent) { where.push("agent = ?"); args.push(opts.agent); }
   if (opts.wallet) { where.push("wallet = ?"); args.push(opts.wallet); }
   if (opts.source) { where.push("source = ?"); args.push(opts.source); }
   const sql = `select * from experiments ${where.length ? "where " + where.join(" and ") : ""} order by at desc limit ${Math.min(opts.limit ?? 200, 2000)}`;
@@ -100,15 +103,15 @@ export function adjusted(c: Cohort, values: number[], group: Group, withShare: b
 }
 
 // ---------------------------------------------------------------- seal, then test
-export function seal(input: { gene: string; group: Group; axis: Axis; by?: string | null; wallet?: string | null; source: string }) {
+export function seal(input: { gene: string; group: Group; axis: Axis; by?: string | null; wallet?: string | null; agent?: string | null; source: string }) {
   const { primary } = cohorts();
   const registration = registrationOf(input.gene, input.group, input.axis, primary.id);
   const existing = getExperiment(registration);
   if (existing) return { exp: existing, repeat: true };
   run(
-    `insert into experiments (registration, gene, grp, axis, cohort, protocol, at, by, wallet, source, state)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'sealed')`,
-    registration, input.gene, input.group, input.axis, primary.id, PROTOCOL, nowIso(), input.by ?? null, input.wallet ?? null, input.source,
+    `insert into experiments (registration, gene, grp, axis, cohort, protocol, at, by, wallet, agent, source, state)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'sealed')`,
+    registration, input.gene, input.group, input.axis, primary.id, PROTOCOL, nowIso(), input.by ?? null, input.wallet ?? null, input.agent ?? null, input.source,
   );
   return { exp: getExperiment(registration)!, repeat: false };
 }
