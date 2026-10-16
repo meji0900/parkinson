@@ -1,0 +1,403 @@
+{
+ "id": "kamath2022-sn",
+ "label": "Kamath et al. 2022, substantia nigra (18 donors)",
+ "region": "substantia nigra, an independent cohort",
+ "cells": 387483,
+ "genes": 33284,
+ "axes": [],
+ "agent_axes": [],
+ "resilience_stage": 1,
+ "covariates": [
+  "age",
+  "female",
+  "pmi"
+ ],
+ "source": {
+  "cite": "Kamath T. et al. Single-cell genomic profiling of human dopamine neurons identifies a population that selectively degenerates in Parkinson's disease. Nat Neurosci 25, 588-595 (2022). doi:10.1038/s41593-022-01061-1",
+  "url": "https://cellxgene.cziscience.com/collections/b0f0b447-ac37-45b0-b1bf-5c0b7d871120",
+  "license": "CC BY 4.0",
+  "notes": "No Lewy-body staging: predictions are confirmed by Parkinson's or Lewy body dementia against controls. Dopamine neurons come mostly from NR4A2-sorted libraries, so cell-group shares are distorted by the sorting."
+ },
+ "donors": [
+  {
+   "id": "1963",
+   "age": 82.0,
+   "female": 0,
+   "pmi": 6.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Parkinson disease",
+   "share": {
+    "dopamine neurons": 0.001,
+    "GABA neurons": 0.00373,
+    "glutamate neurons": 0.00892,
+    "microglia": 0.08184,
+    "astrocytes": 0.13367,
+    "oligodendrocytes": 0.67658,
+    "OPCs": 0.04724,
+    "endothelial": 0.03899
+   }
+  },
+  {
+   "id": "2142",
+   "age": 90.0,
+   "female": 0,
+   "pmi": 2.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Parkinson disease",
+   "share": {
+    "dopamine neurons": 0.00227,
+    "GABA neurons": 0.00497,
+    "glutamate neurons": 0.01318,
+    "microglia": 0.08317,
+    "astrocytes": 0.07557,
+    "oligodendrocytes": 0.74308,
+    "OPCs": 0.05027,
+    "endothelial": 0.02365
+   }
+  },
+  {
+   "id": "2544",
+   "age": 89.0,
+   "female": 1,
+   "pmi": 10.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Lewy body dementia",
+   "share": {
+    "dopamine neurons": 0.0844,
+    "GABA neurons": 0.08188,
+    "glutamate neurons": 0.09366,
+    "microglia": 0.1005,
+    "astrocytes": 0.09335,
+    "oligodendrocytes": 0.48698,
+    "OPCs": 0.03139,
+    "endothelial": 0.02414
+   }
+  },
+  {
+   "id": "2561",
+   "age": 70.0,
+   "female": 1,
+   "pmi": 21.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Lewy body dementia",
+   "share": {
+    "dopamine neurons": 0.00381,
+    "GABA neurons": 0.03575,
+    "glutamate neurons": 0.07912,
+    "microglia": 0.05247,
+    "astrocytes": 0.11041,
+    "oligodendrocytes": 0.6125,
+    "OPCs": 0.07039,
+    "endothelial": 0.03139
+   }
+  },
+  {
+   "id": "2569",
+   "age": 74.0,
+   "female": 0,
+   "pmi": 13.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Lewy body dementia",
+   "share": {
+    "dopamine neurons": 0.15692,
+    "GABA neurons": 0.04938,
+    "glutamate neurons": 0.05398,
+    "microglia": 0.10268,
+    "astrocytes": 0.11086,
+    "oligodendrocytes": 0.44994,
+    "OPCs": 0.044,
+    "endothelial": 0.02763
+   }
+  },
+  {
+   "id": "3298",
+   "age": 79.0,
+   "female": 0,
+   "pmi": 22.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.00544,
+    "GABA neurons": 0.02237,
+    "glutamate neurons": 0.02652,
+    "microglia": 0.0685,
+    "astrocytes": 0.12577,
+    "oligodendrocytes": 0.565,
+    "OPCs": 0.12145,
+    "endothelial": 0.05779
+   }
+  },
+  {
+   "id": "3322",
+   "age": 90.0,
+   "female": 1,
+   "pmi": 22.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.00778,
+    "GABA neurons": 0.17752,
+    "glutamate neurons": 0.24894,
+    "microglia": 0.06933,
+    "astrocytes": 0.04066,
+    "oligodendrocytes": 0.38122,
+    "OPCs": 0.0165,
+    "endothelial": 0.05513
+   }
+  },
+  {
+   "id": "3345",
+   "age": 82.0,
+   "female": 1,
+   "pmi": 12.9,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.10397,
+    "GABA neurons": 0.04215,
+    "glutamate neurons": 0.0313,
+    "microglia": 0.11735,
+    "astrocytes": 0.10708,
+    "oligodendrocytes": 0.53052,
+    "OPCs": 0.04612,
+    "endothelial": 0.01769
+   }
+  },
+  {
+   "id": "3346",
+   "age": 91.0,
+   "female": 1,
+   "pmi": 10.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.0606,
+    "GABA neurons": 0.1815,
+    "glutamate neurons": 0.25721,
+    "microglia": 0.10953,
+    "astrocytes": 0.03537,
+    "oligodendrocytes": 0.28955,
+    "OPCs": 0.01647,
+    "endothelial": 0.04708
+   }
+  },
+  {
+   "id": "3482",
+   "age": 79.0,
+   "female": 1,
+   "pmi": 14.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.06751,
+    "GABA neurons": 0.10649,
+    "glutamate neurons": 0.09092,
+    "microglia": 0.06377,
+    "astrocytes": 0.08577,
+    "oligodendrocytes": 0.47948,
+    "OPCs": 0.03597,
+    "endothelial": 0.06864
+   }
+  },
+  {
+   "id": "3873",
+   "age": 76.0,
+   "female": 1,
+   "pmi": 6.8,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Parkinson disease",
+   "share": {
+    "dopamine neurons": 0.00705,
+    "GABA neurons": 0.11136,
+    "glutamate neurons": 0.20424,
+    "microglia": 0.05161,
+    "astrocytes": 0.10221,
+    "oligodendrocytes": 0.46366,
+    "OPCs": 0.03839,
+    "endothelial": 0.01921
+   }
+  },
+  {
+   "id": "3887",
+   "age": 82.0,
+   "female": 0,
+   "pmi": 13.7,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Parkinson disease",
+   "share": {
+    "dopamine neurons": 0.00378,
+    "GABA neurons": 0.0693,
+    "glutamate neurons": 0.38912,
+    "microglia": 0.099,
+    "astrocytes": 0.05694,
+    "oligodendrocytes": 0.32679,
+    "OPCs": 0.02974,
+    "endothelial": 0.02086
+   }
+  },
+  {
+   "id": "4560",
+   "age": 83.0,
+   "female": 1,
+   "pmi": 13.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Parkinson disease",
+   "share": {
+    "dopamine neurons": 0.05113,
+    "GABA neurons": 0.14459,
+    "glutamate neurons": 0.14079,
+    "microglia": 0.06714,
+    "astrocytes": 0.0805,
+    "oligodendrocytes": 0.45533,
+    "OPCs": 0.02066,
+    "endothelial": 0.03592
+   }
+  },
+  {
+   "id": "4568",
+   "age": 78.0,
+   "female": 0,
+   "pmi": 22.3,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Parkinson disease",
+   "share": {
+    "dopamine neurons": 0.02016,
+    "GABA neurons": 0.07736,
+    "glutamate neurons": 0.14118,
+    "microglia": 0.04791,
+    "astrocytes": 0.08333,
+    "oligodendrocytes": 0.49591,
+    "OPCs": 0.04305,
+    "endothelial": 0.08911
+   }
+  },
+  {
+   "id": "4775",
+   "age": 75.0,
+   "female": 0,
+   "pmi": 13.8,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 1,
+   "group_label": "Lewy body dementia",
+   "share": {
+    "dopamine neurons": 0.00501,
+    "GABA neurons": 0.04628,
+    "glutamate neurons": 0.1242,
+    "microglia": 0.10529,
+    "astrocytes": 0.10227,
+    "oligodendrocytes": 0.54419,
+    "OPCs": 0.0482,
+    "endothelial": 0.02138
+   }
+  },
+  {
+   "id": "4956",
+   "age": 92.0,
+   "female": 1,
+   "pmi": 23.3,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.26344,
+    "GABA neurons": 0.09298,
+    "glutamate neurons": 0.03914,
+    "microglia": 0.11476,
+    "astrocytes": 0.12106,
+    "oligodendrocytes": 0.33213,
+    "OPCs": 0.00131,
+    "endothelial": 0.0286
+   }
+  },
+  {
+   "id": "5610",
+   "age": 49.0,
+   "female": 1,
+   "pmi": 7.0,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.13492,
+    "GABA neurons": 0.09244,
+    "glutamate neurons": 0.13435,
+    "microglia": 0.05655,
+    "astrocytes": 0.13951,
+    "oligodendrocytes": 0.34994,
+    "OPCs": 0.04048,
+    "endothelial": 0.04277
+   }
+  },
+  {
+   "id": "6173",
+   "age": 49.0,
+   "female": 0,
+   "pmi": 7.2,
+   "braak": null,
+   "nigra": null,
+   "parkinsonism": 0,
+   "group_label": "normal",
+   "share": {
+    "dopamine neurons": 0.11193,
+    "GABA neurons": 0.05973,
+    "glutamate neurons": 0.1424,
+    "microglia": 0.07281,
+    "astrocytes": 0.06762,
+    "oligodendrocytes": 0.46668,
+    "OPCs": 0.05198,
+    "endothelial": 0.024
+   }
+  }
+ ],
+ "groups": [
+  "dopamine neurons",
+  "GABA neurons",
+  "glutamate neurons",
+  "microglia",
+  "astrocytes",
+  "oligodendrocytes",
+  "OPCs",
+  "endothelial"
+ ],
+ "genes_per_group": {
+  "dopamine neurons": 15842,
+  "GABA neurons": 16935,
+  "glutamate neurons": 16964,
+  "microglia": 16721,
+  "astrocytes": 17005,
+  "oligodendrocytes": 16257,
+  "OPCs": 17069,
+  "endothelial": 16738
+ }
+}

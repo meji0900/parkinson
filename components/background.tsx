@@ -49,7 +49,7 @@ export function Background() {
 }
 
 const HOME_REFS = [
-  "parkinson1817", "kamath2022", "martirosyan2024", "wang2024", "asap", "braak2003", "spillantini1997", "nalls2019", "kim2024", "sidransky2009",
+  "parkinson1817", "volpato2025", "kamath2022", "martirosyan2024", "wang2024", "asap", "braak2003", "spillantini1997", "nalls2019", "kim2024", "sidransky2009",
   "cheng2010", "nelson2015", "plate1995",
 ] as const;
 

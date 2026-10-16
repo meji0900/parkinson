@@ -1,5 +1,6 @@
 // Questions typed into the terminal. Answers come from the records: with an Anthropic API key the agent's
 // voice is written by Claude, grounded on a snapshot of the ledgers; without one, plain lookups answer.
+import { confirmation } from "@/lib/atlas/cohort";
 import Anthropic from "@anthropic-ai/sdk";
 import { getStatus } from "@/lib/server/events";
 import { funnel, geneRecord, notebook } from "@/lib/views";
@@ -63,7 +64,7 @@ function plain(q: string): string[] {
   }
   if (/swarm/.test(s)) {
     const f = funnel().swarm;
-    return [`${f.count} swarm cases opened, ${f.followups} follow-ups sealed, ${f.confirmed} confirmed in the second region.`];
+    return [`${f.count} swarm cases opened, ${f.followups} follow-ups sealed, ${f.confirmed} confirmed in ${confirmation().short}.`];
   }
   const genes = mentionedGenes(q);
   if (genes.length) {

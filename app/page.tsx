@@ -10,16 +10,16 @@ import { Predict } from "@/components/predict";
 import { ReceiptStrip } from "@/components/receipts";
 import { ExperimentRows, Funnel, Merged, NotebookEntries, Sec, SwarmCases, Weights } from "@/components/sections";
 import { runsFor } from "@/lib/agent/pipeline";
-import { AXIS_SHORT, RESILIENCE_STAGE } from "@/lib/atlas/cohort";
+import { AXIS_SHORT, cohorts } from "@/lib/atlas/cohort";
 import { listExperiments } from "@/lib/atlas/experiments";
 import { openWindows, scoreboard } from "@/lib/atlas/forecasts";
-import { listStudies, STUDIES } from "@/lib/atlas/studies";
+import { listStudies, runnable, STUDIES } from "@/lib/atlas/studies";
 import { listCases } from "@/lib/atlas/swarm";
 import { chainMode } from "@/lib/chain/oracle";
 import { one } from "@/lib/server/db";
 import { agentInterval } from "@/lib/server/events";
 import { within } from "@/lib/server/timeout";
-import { atlasInfo, funnel, notebook } from "@/lib/views";
+import { atlasInfo, confirmWords, funnel, notebook } from "@/lib/views";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,7 @@ const every = (s: number) => (s % 60 === 0 ? (s === 60 ? "minute" : `${s / 60} m
 export default async function Home() {
   const mode = await within(chainMode(), 2500, "off" as const);
   const atlas = atlasInfo();
+  const currentCohort = cohorts().primary.id;
   const f = funnel();
   const nb = notebook();
   const genes = one<{ n: number }>("select count(distinct symbol) as n from runs")?.n ?? 0;
@@ -104,7 +105,7 @@ export default async function Home() {
           donors, then checks it on the other half, the same way it tests its own. If it fails, the receipt carries your name. Each prediction
           is registered once: if someone got there first, you get their result.
         </p>
-        <Predict groups={atlas.groups} chainMode={mode} donors={atlas.donors} />
+        <Predict groups={atlas.groups} axes={atlas.axes.map((a) => a.key)} chainMode={mode} donors={atlas.donors} />
       </Sec>
 
       <Background />
@@ -132,35 +133,55 @@ export default async function Home() {
       </Sec>
 
       <Sec id="atlas" title="Atlas">
-        <p>
-          The atlas is the substantia nigra pars compacta: for each of {atlas.donors} donors, the average expression of every gene in each of eight
-          cell groups, with the donor&apos;s Braak Lewy-body stage, the loss of pigmented neurons in the nigra, and whether they developed
-          parkinsonism in life. Single-nucleus studies of this region found that one population of dopamine neurons, marked by <i>SOX6</i> and{" "}
-          <i>AGTR1</i>, is the most depleted (Kamath et al., <i>Nature Neuroscience</i>, 2022).
-        </p>
-        {atlas.simulated && (
+        {atlas.simulated ? (
+          <p>
+            The atlas is the substantia nigra pars compacta: for each of {atlas.donors} donors, the average expression of every gene in each of{" "}
+            {atlas.groups.length} cell groups, with the donor&apos;s Braak Lewy-body stage, the loss of pigmented neurons in the nigra, and whether they
+            developed parkinsonism in life. Single-nucleus studies of this region found that one population of dopamine neurons, marked by <i>SOX6</i>{" "}
+            and <i>AGTR1</i>, is the most depleted (Kamath et al., <i>Nature Neuroscience</i>, 2022).
+          </p>
+        ) : (
+          <p>
+            The atlas is human tissue: the {atlas.region} of {atlas.donors} donors, read nucleus by nucleus and summed per donor in each of{" "}
+            {atlas.groups.length} cell groups ({atlas.groups.join(", ")}), with each donor&apos;s Braak Lewy-body stage and whether they developed
+            parkinsonism in life. {st.resilient} of them carried Lewy pathology and never did: incidental Lewy body disease, the donors the resilience
+            outcome compares with the patients. Single-nucleus studies of this region found that one population of dopamine neurons, marked by{" "}
+            <i>SOX6</i> and <i>AGTR1</i>, is the most depleted (Kamath et al., <i>Nature Neuroscience</i>, 2022).
+          </p>
+        )}
+        {atlas.simulated ? (
           <p className="note" role="note">
             <b>This server is running on a simulated cohort.</b> It is shaped like a nigral atlas ({atlas.donors} donors, Lewy-body staging,
-            nigral loss and parkinsonism, the same eight cell groups) so the whole method runs end to end, but the numbers are generated. Results
+            nigral loss and parkinsonism, the same cell groups) so the whole method runs end to end, but the numbers are generated. Results
             from it test the method; they are not findings. Install real pseudobulk data and the same code tests on it.
+          </p>
+        ) : (
+          <p className="note real" role="note">
+            <b>Real data.</b> The atlas is {atlas.label.split(",")[0]}
+            {atlas.source && <> (<a href={atlas.source.url}>source</a>, {atlas.source.license})</>}{atlas.source?.cite.includes("preprint") ? ", a preprint" : ""}. {atlas.source?.notes}{" "}
+            The predictions that hold are confirmed in {atlas.second.label.split(",")[0]}
+            {atlas.second.source && <> (<a href={atlas.second.source.url}>source</a>, {atlas.second.source.license})</>}: {atlas.second.donors} other donors, another lab
+            and another method, compared as {atlas.second.proxy ?? "the same outcome"}. Full citations are under Sources.
           </p>
         )}
         <PlateById id="blausen" wide />
         <pre className="ascii" aria-label="The cohort">{[
           `cohort        ${atlas.label}`,
           `cell groups   ${atlas.groups.join(", ")}`,
-          `Braak stage   ${st.braak.map((c, i) => `${i}:${c}`).join("  ")}`,
+          `Braak stage   ${st.stages.map((x) => `${x.stage}: ${x.n}`).join("   ")}`,
           `parkinsonism  ${st.parkinsonism} of ${atlas.donors} donors`,
-          `resilient     ${st.resilient} of the ${st.heavy} donors at stage ${RESILIENCE_STAGE} or beyond never developed parkinsonism`,
-          `second region ${atlas.second.region} (${atlas.second.donors} donors${atlas.second.simulated ? ", simulated" : ""})`,
+          `resilient     ${st.resilient} of the ${st.heavy} donors at stage ${st.resilience_stage} or beyond never developed parkinsonism`,
+          `outcomes      ${atlas.axes.map((a) => a.key).join(", ")}`,
+          `adjusted for  ${atlas.covariates}`,
+          `confirmed in  ${atlas.second.name}, ${atlas.second.donors} donors${atlas.second.simulated ? ", simulated" : ""}${atlas.second.proxy ? ", by disease status" : ""}`,
         ].join("\n")}</pre>
         <h3 className="ex-title">Experiments <span>{f.stages[0].n.toLocaleString("en")} tested, {f.stages[1].n} held</span></h3>
-        <ExperimentRows rows={listExperiments({ limit: 60 })} />
+        <ExperimentRows rows={listExperiments({ limit: 60 }).filter((e) => e.cohort === currentCohort)} />
         <p>
           Protocol: each prediction (gene, cell type, outcome) is hashed before any data is read, tested on a random half of the donors, and must
           replicate on the other half. Predictions that fail either half get a receipt. Predictions that hold are checked again with the cell mix
-          controlled, then in a second region, the {atlas.second.region}, the neighbouring dopamine nucleus that Parkinson&apos;s largely spares.
-          One outcome of interest is resilience: donors with Lewy pathology at stage {RESILIENCE_STAGE} or beyond who never developed parkinsonism.
+          controlled, then in {confirmWords()}. One outcome of interest is resilience: donors with Lewy pathology at stage {st.resilience_stage} or
+          beyond who never developed parkinsonism.
         </p>
         <DatScan />
       </Sec>
@@ -217,7 +238,7 @@ export default async function Home() {
               <li key={d.id} className={s?.result?.passed ? "pass" : ""}>
                 <span className="ex-gene"><Link href={`/program#${d.id}`}>{d.title}</Link></span>
                 <span className="ex-nums">{d.genes.length} genes, {d.group}</span>
-                <span className="ex-verdict">{!s ? "queued" : s.state !== "done" ? "sealed" : s.result?.passed ? "held" : s.receipt ? <Link href={`/receipt/${s.receipt}`}>receipt {String(s.receipt).padStart(4, "0")}</Link> : "missed"}</span>
+                <span className="ex-verdict">{!s ? (runnable(d) ? "queued" : "needs data this atlas lacks") : s.state !== "done" ? "sealed" : s.result?.passed ? "held" : s.receipt ? <Link href={`/receipt/${s.receipt}`}>receipt {String(s.receipt).padStart(4, "0")}</Link> : "missed"}</span>
               </li>
             );
           })}

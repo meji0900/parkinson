@@ -121,7 +121,10 @@ export function rankBiserial(a: number[], b: number[]): Stat {
 }
 
 /** OLS residuals of y on the columns of X (an intercept is added). */
-export function residualize(y: number[], X: number[][]): number[] {
+export function residualize(y: number[], X0: number[][]): number[] {
+  // a covariate that does not vary (unknown for every donor, or one value for all) carries nothing and would make
+  // the system singular, so it is left out
+  const X = X0.filter((x) => x.length && Math.max(...x) - Math.min(...x) > 1e-12);
   const n = y.length, k = X.length + 1;
   const cols = [new Array(n).fill(1), ...X];
   const A = Array.from({ length: k }, (_, i) => Array.from({ length: k + 1 }, (_, j) =>

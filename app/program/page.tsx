@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AXIS_LABEL, cohorts } from "@/lib/atlas/cohort";
-import { RANDOM_SETS, listStudies, registrationOfStudy, STUDIES, type Study, type StudyDef } from "@/lib/atlas/studies";
+import { RANDOM_SETS, listStudies, registrationOfStudy, runnable, STUDIES, type Study, type StudyDef } from "@/lib/atlas/studies";
 import { fmtE, fmtP } from "@/lib/atlas/stats";
 import { REFS, refHref } from "@/lib/sources";
 
@@ -49,7 +49,7 @@ function StudyBlock({ d, s, cohortId }: { d: StudyDef; s?: Study; cohortId: stri
         `          beats 95% of ${RANDOM_SETS} matched random sets`,
         `sealed    ${reg.slice(0, 32)}`,
         `          ${reg.slice(32)}`,
-        `          ${s ? `${s.at.slice(0, 16).replace("T", " ")} UTC` : "queued; the hash is fixed in advance"}`,
+        `          ${s ? `${s.at.slice(0, 16).replace("T", " ")} UTC` : runnable(d) ? "queued; the hash is fixed in advance" : "not run: this atlas lacks its cell group or outcome"}`,
       ].join("\n")}</pre>
       {r ? (
         <>

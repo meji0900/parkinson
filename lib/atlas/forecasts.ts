@@ -79,16 +79,21 @@ export const dueWindows = () =>
   all<{ registration: string }>("select registration from windows where closed is null and closes <= ? order by closes", nowIso()).map((r) => r.registration);
 
 /** test the prediction, score every forecast on it, reveal the agent's number */
-export function closeWindow(registration: string) {
+export function closeWindow(registration: string): { exp: Experiment; window: ClosedWindow | null; voided: boolean } | null {
   const w = one<WindowRow>("select * from windows where registration = ?", registration);
   if (!w || w.closed) return null;
   const exp = test(registration);
+  if (exp.reason?.startsWith("voided")) {
+    // the atlas it was sealed on was replaced: nothing was tested, so nothing is scored
+    run("update windows set closed = ? where registration = ?", nowIso(), registration);
+    return { exp, window: null, voided: true };
+  }
   const y = exp.passed ? 1 : 0;
   tx(() => {
     run("update forecasts set y = ?, brier = (p - ?) * (p - ?) where registration = ?", y, y, y, registration);
     run("update windows set closed = ? where registration = ?", nowIso(), registration);
   });
-  return { exp, window: closedOne(registration)! };
+  return { exp, window: closedOne(registration)!, voided: false };
 }
 
 // ---------------------------------------------------------------- reading the windows back
@@ -130,10 +135,13 @@ function closedOne(registration: string): ClosedWindow | null {
   return shape(w, e, all("select kind, name, who, p, brier from forecasts where registration = ? order by at", registration));
 }
 
+const CURRENT = () => cohorts().primary.id;
+
 export function closedWindows(limit = 20, opts: { who?: string } = {}): ClosedWindow[] {
+  const scored = "w.closed is not null and exists (select 1 from forecasts h where h.registration = w.registration and h.y is not null)";
   const rows = opts.who
-    ? all<WindowRow>("select w.* from windows w join forecasts f on f.registration = w.registration and f.who = ? where w.closed is not null order by w.closed desc limit ?", opts.who, limit)
-    : all<WindowRow>("select * from windows where closed is not null order by closed desc limit ?", limit);
+    ? all<WindowRow>(`select w.* from windows w join forecasts f on f.registration = w.registration and f.who = ? join experiments e on e.registration = w.registration and e.cohort = ? where ${scored} order by w.closed desc limit ?`, opts.who, CURRENT(), limit)
+    : all<WindowRow>(`select w.* from windows w join experiments e on e.registration = w.registration and e.cohort = ? where ${scored} order by w.closed desc limit ?`, CURRENT(), limit);
   return rows.flatMap((w) => {
     const e = getExperiment(w.registration);
     return e ? [shape(w, e, all("select kind, name, who, p, brier from forecasts where registration = ? order by at", w.registration))] : [];
@@ -149,8 +157,9 @@ export function forecasters(kind: "person" | "agent", limit = 50): ForecasterRow
     `select f.who, (select name from forecasts x where x.who = f.who order by x.at desc limit 1) as name,
        count(*) as n, avg(f.brier) as brier, avg(h.brier - f.brier) as skill, sum(h.brier - f.brier) as gain
      from forecasts f join forecasts h on h.registration = f.registration and h.who = ?
+       join experiments e on e.registration = f.registration and e.cohort = ?
      where f.kind = ? and f.y is not null group by f.who`,
-    HOUSE, kind,
+    HOUSE, CURRENT(), kind,
   );
   return rows
     .map((r) => ({ ...r, kind, brier: r3(r.brier), skill: r3(r.skill), gain: r3(r.gain), ranked: r.n >= RANKED_AFTER }))
@@ -164,8 +173,8 @@ export function scoreboard() {
     `select h.registration, h.y, h.p as house,
        (select avg(p) from forecasts f where f.registration = h.registration and f.kind = 'person') as crowd,
        (select count(*) from forecasts f where f.registration = h.registration and f.kind = 'person') as people
-     from forecasts h where h.who = ? and h.y is not null`,
-    HOUSE,
+     from forecasts h join experiments e on e.registration = h.registration and e.cohort = ? where h.who = ? and h.y is not null`,
+    CURRENT(), HOUSE,
   );
   const both = rows.filter((r) => r.people > 0 && r.crowd != null);
   const mean = (xs: number[]) => (xs.length ? r3(xs.reduce((a, b) => a + b, 0) / xs.length) : null);

@@ -9,7 +9,7 @@ import { findings, funnel } from "@/lib/views";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Findings",
-  description: "Every sealed prediction that held, and the checks it went through: the cell mix, a second region, human genetics, compounds, and the sealed studies.",
+  description: "Every sealed prediction that held, and the checks it went through: the cell mix, a second cohort or region, human genetics, compounds, and the sealed studies.",
 };
 
 const e2 = (x?: number) => (x == null ? "n/a" : fmtE(x));
@@ -65,16 +65,26 @@ export default function Findings() {
           <p className="cs-limit">limit: the control is the group&apos;s share of nuclei, not a count of neurons in tissue; shifts among dopamine-neuron subtypes (the SOX6/AGTR1 cells are the most depleted) happen inside the group and are not covered.</p>
         </Sec>
 
-        <Sec id="second" title={`A second region: the ${f.second_region}`}>
-          <p>
-            Each prediction that held is tested once more in the {f.second_region} ({f.second_donors} donors), with the direction it must take
-            written down first. The ventral tegmental area sits beside the substantia nigra and holds dopamine neurons too, but Parkinson&apos;s
-            largely spares it, so a gene that moves the same way in both is a disease-wide signal and one that moves only in the nigra may be
-            about vulnerability. The strict bar divides 0.05 by the number of predictions that held: p &lt; {fmtP(f.strict_alpha)}.
-          </p>
+        <Sec id="second" title={f.second_kind === "region" ? `A second region: the ${f.second_region}` : `A second cohort: the ${f.second_region}`}>
+          {f.second_kind === "region" ? (
+            <p>
+              Each prediction that held is tested once more in the {f.second_region} ({f.second_donors} donors), with the direction it must take
+              written down first. The ventral tegmental area sits beside the substantia nigra and holds dopamine neurons too, but Parkinson&apos;s
+              largely spares it, so a gene that moves the same way in both is a disease-wide signal and one that moves only in the nigra may be
+              about vulnerability. The strict bar divides 0.05 by the number of predictions that held: p &lt; {fmtP(f.strict_alpha)}.
+            </p>
+          ) : (
+            <p>
+              Each prediction that held is tested once more in other people: the {f.second_region}, {f.second_donors} donors from a different brain
+              bank, sequenced by another lab with another method, with the direction it must take written down first. That cohort has no Lewy-body
+              staging, so a prediction about the stage is checked as {f.second_proxy}: a gene that moves with the disease&apos;s progress should differ
+              between patients and controls, the same way. Resilience needs staged donors and is not checked there. The strict bar divides 0.05 by
+              the number of predictions that held: p &lt; {fmtP(f.strict_alpha)}.
+            </p>
+          )}
           <pre className="ascii">{[
             `${String(held.length).padStart(4)}  held in the ${f.region}`,
-            `${String(f.second.measured).padStart(4)}  measured in the ${f.second_region}`,
+            `${String(f.second.measured).padStart(4)}  testable in the ${f.second_region}`,
             `${String(f.second.same).padStart(4)}  point the same way`,
             `${String(f.second.nominal).padStart(4)}  at p < ${ALPHA}`,
             `${String(f.second.strict).padStart(4)}  at p < ${fmtP(f.strict_alpha)}`,
@@ -82,13 +92,13 @@ export default function Findings() {
           {held.length > 0 && (
             <div className="scroll-x">
               <table className="tbl">
-                <thead><tr><th>prediction</th><th className="m">first region</th><th className="m">second region</th><th className="m">p</th></tr></thead>
+                <thead><tr><th>prediction</th><th className="m">first</th><th className="m">{f.second_kind === "region" ? "second region" : "second cohort"}</th><th className="m">p</th></tr></thead>
                 <tbody>
                   {held.map((e) => (
                     <tr key={e.registration}>
                       <td><Link href={`/gene/${e.gene}`}><i>{e.gene}</i></Link> in {e.group}, {AXIS_SHORT[e.axis]}</td>
                       <td className="m">{e2(e.discovery?.effect)}</td>
-                      <td className={`m ${e.checks?.second?.same_sign && e.checks.second.p < f.strict_alpha ? "hit" : ""}`}>{e.checks?.second ? `${e2(e.checks.second.effect)} ${e.checks.second.same_sign ? "same way" : "flipped"}` : "not measured"}</td>
+                      <td className={`m ${e.checks?.second?.same_sign && e.checks.second.p < f.strict_alpha ? "hit" : ""}`}>{e.checks?.second ? `${e2(e.checks.second.effect)} ${e.checks.second.same_sign ? "same way" : "flipped"}${e.checks.second.proxy ? " (PD vs controls)" : ""}` : "not testable there"}</td>
                       <td className="m">{e.checks?.second ? fmtP(e.checks.second.p) : ""}</td>
                     </tr>
                   ))}
@@ -96,7 +106,11 @@ export default function Findings() {
               </table>
             </div>
           )}
-          <p className="cs-limit">limit: largely the same donors in both regions; this is consistency within a cohort, not replication in new people.</p>
+          <p className="cs-limit">
+            {f.second_kind === "region"
+              ? "limit: largely the same donors in both regions; this is consistency within a cohort, not replication in new people."
+              : `limit: new people, but few of them (${f.second_donors}), and a stage prediction is checked only as patients against controls; dopamine neurons in that cohort come mostly from sorted libraries.`}
+          </p>
         </Sec>
 
         <Sec id="genetics" title="Does human genetics already point at these genes?">

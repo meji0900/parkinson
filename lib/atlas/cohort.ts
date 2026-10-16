@@ -1,12 +1,13 @@
 // The atlas the predictions are tested on.
 //
-// Real data: put a donor table and per-cell-group pseudobulk matrices under data/atlas/<cohort>/
-// (scripts/build_pseudobulk.py builds them from a substantia nigra single-nucleus h5ad) and they are used.
-// Without them the agent runs on a SIMULATED cohort shaped like the published midbrain atlases: the same
-// cell groups, Lewy-body staging, nigral neuron loss and clinical parkinsonism. Every record made on it is
-// labelled simulated; none of it is a finding.
+// Real data: a donor table and per-cell-group pseudobulk matrices under data/atlas/<cohort>/ are used when present
+// (scripts/build_real_atlas.py builds them from two public substantia nigra datasets; scripts/build_pseudobulk.py
+// from any single-nucleus h5ad). A real atlas says which outcomes it can test and which cell groups it measured:
+// a public dataset rarely has every pathology score. Without one the agent runs on a SIMULATED cohort shaped like
+// the published midbrain atlases; every record made on it is labelled simulated, and none of it is a finding.
 import fs from "node:fs";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 
 export const GROUPS = [
   "dopamine neurons", "GABA neurons", "glutamate neurons", "microglia", "astrocytes", "oligodendrocytes", "OPCs", "endothelial",
@@ -27,17 +28,23 @@ export const RESILIENCE_STAGE = 3;
 
 export type Donor = {
   id: string;
+  /** NaN where the source does not give it */
   age: number;
   female: number;
   pmi: number;
-  /** Braak Lewy-body stage, 0 to 6 */
+  /** Braak Lewy-body stage, 0 to 6 (a real atlas may give the middle of a bin, e.g. 3.5 for 3-4); NaN if not staged */
   braak: number;
-  /** semi-quantitative loss of pigmented neurons in the substantia nigra, 0 (none) to 3 (severe) */
+  /** semi-quantitative loss of pigmented neurons in the substantia nigra, 0 (none) to 3 (severe); NaN if not scored */
   nigra: number;
   /** clinical parkinsonism in life (a PD or PD-dementia diagnosis) */
   parkinsonism: number;
   share: Record<Group, number>;
+  /** the source's own name for the donor's group, e.g. "PD_B5-6" */
+  label?: string;
 };
+
+export type Covariate = "age" | "female" | "pmi";
+export type Source = { cite: string; url: string; license: string; notes?: string };
 
 export type Cohort = {
   id: string;
@@ -47,6 +54,17 @@ export type Cohort = {
   donors: Donor[];
   cells: number;
   genes: number | null;
+  /** the outcomes this atlas can test */
+  axes: Axis[];
+  /** the outcomes the agent seals on its own when it reads a gene */
+  agentAxes: Axis[];
+  /** the cell groups it measured */
+  groups: Group[];
+  /** the Lewy-body stage from which a donor without parkinsonism counts as resilient */
+  resilienceStage: number;
+  /** donor covariates it can adjust for */
+  covariates: Covariate[];
+  source?: Source;
   /** donor-ordered expression of a gene in a group, or null when the group does not measure it */
   expr(gene: string, group: Group): number[] | null;
   /** genes to draw matched random sets from, for the studies */
@@ -146,6 +164,7 @@ function simulatedCohort(id: string, label: string, region: string, seed: string
   const cache = new Map<string, number[] | null>();
   return {
     id, label, region, simulated: true, donors, cells: n * 9000, genes: null,
+    axes: [...AXES], agentAxes: ["braak", "resilience"], groups: [...GROUPS], resilienceStage: RESILIENCE_STAGE, covariates: ["age", "female", "pmi"],
     expr(gene, group) {
       const key = gene + "|" + group;
       if (cache.has(key)) return cache.get(key)!;
@@ -165,20 +184,35 @@ function simulatedCohort(id: string, label: string, region: string, seed: string
 }
 
 // ---------------------------------------------------------------- real pseudobulk cohort from disk
-type Meta = { id: string; label: string; region: string; cells: number; genes: number; donors: Donor[] };
+type MetaDonor = Omit<Donor, "age" | "pmi" | "braak" | "nigra"> & { age: number | null; pmi: number | null; braak: number | null; nigra: number | null; group_label?: string };
+type Meta = {
+  id: string; label: string; region: string; cells: number; genes: number; donors: MetaDonor[];
+  groups?: Group[]; axes?: Axis[]; agent_axes?: Axis[]; resilience_stage?: number; covariates?: Covariate[]; source?: Source;
+};
+const num = (x: number | null | undefined) => (x == null ? NaN : Number(x));
 
 function diskCohort(dir: string): Cohort | null {
   const metaFile = path.join(dir, "meta.json");
   if (!fs.existsSync(metaFile)) return null;
   const meta = JSON.parse(fs.readFileSync(metaFile, "utf8")) as Meta;
-  const groups = new Map<Group, Map<string, Float32Array> | null>();
+  const donors: Donor[] = meta.donors.map((d) => ({
+    id: String(d.id), female: d.female, parkinsonism: d.parkinsonism, share: d.share, label: d.group_label,
+    age: num(d.age), pmi: num(d.pmi), braak: num(d.braak), nigra: num(d.nigra),
+  }));
+  const fileOf = (group: Group) => {
+    const base = path.join(dir, group.replace(/\s+/g, "_"));
+    return fs.existsSync(base + ".tsv.gz") ? base + ".tsv.gz" : fs.existsSync(base + ".tsv") ? base + ".tsv" : null;
+  };
+  const groups = (meta.groups ?? GROUPS.filter((g) => fileOf(g))).filter((g) => fileOf(g));
+  const cache = new Map<Group, Map<string, Float32Array> | null>();
   const load = (group: Group) => {
-    if (groups.has(group)) return groups.get(group)!;
-    const file = path.join(dir, `${group.replace(/\s+/g, "_")}.tsv`);
-    if (!fs.existsSync(file)) { groups.set(group, null); return null; }
-    const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    if (cache.has(group)) return cache.get(group)!;
+    const file = groups.includes(group) ? fileOf(group) : null;
+    if (!file) { cache.set(group, null); return null; }
+    const raw = fs.readFileSync(file);
+    const lines = (file.endsWith(".gz") ? gunzipSync(raw) : raw).toString("utf8").split(/\r?\n/);
     const header = lines[0].split("\t").slice(1);
-    const order = meta.donors.map((d) => header.indexOf(d.id));
+    const order = donors.map((d) => header.indexOf(d.id));
     const m = new Map<string, Float32Array>();
     for (const line of lines.slice(1)) {
       if (!line) continue;
@@ -187,11 +221,17 @@ function diskCohort(dir: string): Cohort | null {
       order.forEach((col, i) => (v[i] = col >= 0 ? Number(cells[col + 1]) : NaN));
       m.set(cells[0].toUpperCase(), v);
     }
-    groups.set(group, m);
+    cache.set(group, m);
     return m;
   };
+  // an outcome is testable only if the donors carry it
+  const has = (k: "braak" | "nigra") => donors.filter((d) => Number.isFinite(d[k])).length >= 6;
+  const axes = (meta.axes ?? AXES.filter((a) => (a === "resilience" ? has("braak") : has(a)))).filter((a) => (a === "resilience" ? has("braak") : has(a)));
+  const covariates = (meta.covariates ?? (["age", "female", "pmi"] as Covariate[])).filter((k) => donors.every((d) => Number.isFinite(d[k])));
   return {
-    id: meta.id, label: meta.label, region: meta.region, simulated: false, donors: meta.donors, cells: meta.cells, genes: meta.genes,
+    id: meta.id, label: meta.label, region: meta.region, simulated: false, donors, cells: meta.cells, genes: meta.genes,
+    axes, agentAxes: (meta.agent_axes ?? axes).filter((a) => axes.includes(a)), groups,
+    resilienceStage: meta.resilience_stage ?? RESILIENCE_STAGE, covariates, source: meta.source,
     expr(gene, group) {
       const v = load(group)?.get(gene.toUpperCase());
       return v && !v.some(Number.isNaN) ? Array.from(v) : null;
@@ -205,17 +245,52 @@ function diskCohort(dir: string): Cohort | null {
 // ---------------------------------------------------------------- the two cohorts in use
 const g = globalThis as unknown as { __jamesCohorts?: { primary: Cohort; second: Cohort } };
 
+/**
+ * The primary atlas (where predictions are sealed and tested) and the second cohort (where the ones that hold are
+ * confirmed). ATLAS_PRIMARY=simulated forces the simulation; a real primary without a real second cohort falls back to
+ * the simulated second region, and says so.
+ */
 export function cohorts(): { primary: Cohort; second: Cohort } {
   if (g.__jamesCohorts) return g.__jamesCohorts;
   const root = process.env.ATLAS_DIR ?? path.join(process.cwd(), "data", "atlas");
+  const sim = process.env.ATLAS_PRIMARY === "simulated";
   const primary =
-    diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_PRIMARY ?? "pd-snpc")) ??
+    (sim ? null : diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_PRIMARY ?? "pd-snpc"))) ??
     simulatedCohort("sim-snpc-v2", "simulated substantia nigra cohort (84 donors)", "substantia nigra pars compacta", "james-sim-snpc-v1", 84, 1);
   const second =
-    diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_SECOND ?? "pd-vta")) ??
+    (sim ? null : diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_SECOND ?? "pd-sn-kamath"))) ??
     simulatedCohort("sim-vta-v2", "simulated ventral tegmental area cohort (80 donors)", "ventral tegmental area", "james-sim-vta-v1", 80, 0.75);
   g.__jamesCohorts = { primary, second };
   return g.__jamesCohorts;
+}
+
+/** the stages present in a cohort, with a label for each ("0", "3-4" for a bin taken at its middle) */
+export function stagesOf(c: Cohort): { stage: string; n: number }[] {
+  const vals = c.donors.map((d) => d.braak).filter(Number.isFinite);
+  return [...new Set(vals)].sort((a, b) => a - b).map((v) => ({
+    stage: Number.isInteger(v) ? String(v) : `${Math.floor(v)}-${Math.ceil(v)}`,
+    n: vals.filter((x) => x === v).length,
+  }));
+}
+
+/**
+ * How the predictions that hold are confirmed, in words for the pages: another brain region (the simulation's
+ * ventral tegmental area) with the same outcome, or the same region in an independent set of donors, where an
+ * outcome that cohort lacks is checked as Parkinson's or Lewy body dementia against controls.
+ */
+export function confirmation() {
+  const { primary, second } = cohorts();
+  const sameRegion = !second.simulated && second.region.startsWith(primary.region.split(" ").slice(0, 2).join(" "));
+  const name = sameRegion ? `${second.label.split(",")[0]} cohort` : second.region;
+  return {
+    kind: sameRegion ? ("cohort" as const) : ("region" as const),
+    /** e.g. "ventral tegmental area" or "Kamath et al. cohort" */
+    name,
+    /** "the second region" or "the second cohort" */
+    short: sameRegion ? "the second cohort" : "the second region",
+    donors: second.donors.length,
+    proxy: second.axes.length < AXES.length ? "Parkinson's or Lewy body dementia against controls" : null,
+  };
 }
 
 export const isGroup = (s: string): s is Group => (GROUPS as readonly string[]).includes(s);

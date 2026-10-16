@@ -3,8 +3,8 @@ import { listReceipts, receiptCount } from "@/lib/agent/receipts";
 import { recentRuns, runsFor } from "@/lib/agent/pipeline";
 import type { RunRecord } from "@/lib/agent/types";
 import { notebookNights, queueLength } from "@/lib/agent/worker";
-import { AXES, AXIS_LABEL, cohorts, GROUPS, RESILIENCE_STAGE, type Axis } from "@/lib/atlas/cohort";
-import { ALPHA, listExperiments, type Experiment } from "@/lib/atlas/experiments";
+import { AXIS_LABEL, AXIS_SHORT, cohorts, confirmation, stagesOf, type Axis } from "@/lib/atlas/cohort";
+import { ALPHA, covariateWords, listExperiments, type Experiment } from "@/lib/atlas/experiments";
 import { fisherExact, fmtE, fmtP, type Stat } from "@/lib/atlas/stats";
 import { listStudies, STUDIES } from "@/lib/atlas/studies";
 import { listCases, swarmStats } from "@/lib/atlas/swarm";
@@ -13,9 +13,19 @@ import { all, json, kvGet, one } from "@/lib/server/db";
 
 const count = (sql: string, ...p: (string | number)[]) => one<{ n: number }>(sql, ...p)?.n ?? 0;
 
+/** "the ventral tegmental area, the neighbouring dopamine nucleus that Parkinson's largely spares", or the independent cohort */
+export function confirmWords() {
+  const c = confirmation();
+  return c.kind === "region"
+    ? `the ${c.name}, the neighbouring dopamine nucleus that Parkinson's largely spares`
+    : `an independent cohort, the ${c.name} (${c.donors} donors)${c.proxy ? `, where outcomes it was not staged for are checked as ${c.proxy}` : ""}`;
+}
+
 export function atlasInfo() {
   const { primary, second } = cohorts();
   const d = primary.donors;
+  const conf = confirmation();
+  const stage = primary.resilienceStage;
   return {
     state: "done",
     simulated: primary.simulated,
@@ -24,15 +34,21 @@ export function atlasInfo() {
     cells: primary.cells,
     donors: d.length,
     genes: primary.genes,
-    groups: [...GROUPS],
-    axes: AXES.map((a) => ({ key: a, label: AXIS_LABEL[a] })),
+    groups: primary.groups,
+    axes: primary.axes.map((a) => ({ key: a, label: AXIS_LABEL[a] })),
+    covariates: covariateWords(primary),
+    source: primary.source ?? null,
     staging: {
-      braak: Array.from({ length: 7 }, (_, s) => d.filter((x) => x.braak === s).length),
+      stages: stagesOf(primary),
       parkinsonism: d.filter((x) => x.parkinsonism).length,
-      heavy: d.filter((x) => x.braak >= RESILIENCE_STAGE).length,
-      resilient: d.filter((x) => x.braak >= RESILIENCE_STAGE && !x.parkinsonism).length,
+      heavy: d.filter((x) => x.braak >= stage).length,
+      resilient: d.filter((x) => x.braak >= stage && !x.parkinsonism).length,
+      resilience_stage: stage,
     },
-    second: { label: second.label, region: second.region, donors: second.donors.length, simulated: second.simulated },
+    second: {
+      label: second.label, region: second.region, donors: second.donors.length, simulated: second.simulated,
+      kind: conf.kind, name: conf.name, short: conf.short, proxy: conf.proxy, source: second.source ?? null,
+    },
   };
 }
 
@@ -53,12 +69,12 @@ export function funnel() {
     simulated: primary.simulated,
     cohort: primary.label,
     region: primary.region,
-    second_region: second.region,
+    second_region: confirmation().name,
     stages: [
       { key: "tested", n: tested.length, label: "predictions sealed, then tested" },
       { key: "held", n: held.length, label: "held in both donor halves" },
       { key: "composition", n: comp, of: held.length, label: "hold with the cell mix controlled" },
-      { key: "second_same", n: same.length, of: held.length, label: `same way in the ${second.region}` },
+      { key: "second_same", n: same.length, of: held.length, label: `same way in the ${confirmation().name}` },
       { key: "second_nominal", n: nominal, label: "at p < 0.05 there" },
       { key: "second_strict", n: strict, label: "survive correction for every test" },
     ],
@@ -109,7 +125,7 @@ export function geneIndex() {
     "select symbol, name, score, at, passed from runs where id in (select max(id) from runs group by symbol) order by symbol",
   );
   const exps = new Map(
-    all<{ gene: string; n: number; held: number }>("select gene, count(*) as n, coalesce(sum(passed), 0) as held from experiments where state = 'tested' group by gene")
+    all<{ gene: string; n: number; held: number }>("select gene, count(*) as n, coalesce(sum(passed), 0) as held from experiments where state = 'tested' and cohort = ? group by gene", cohorts().primary.id)
       .map((r) => [r.gene, r]),
   );
   const genes = runs.map((r) => ({ ...r, tested: exps.get(r.symbol)?.n ?? 0, held: exps.get(r.symbol)?.held ?? 0 }));
@@ -208,7 +224,9 @@ export function findings() {
   return {
     simulated: primary.simulated,
     region: primary.region,
-    second_region: second.region,
+    second_region: confirmation().name,
+    second_kind: confirmation().kind,
+    second_proxy: confirmation().proxy,
     donors: primary.donors.length,
     second_donors: second.donors.length,
     tested: tested.length,
@@ -262,16 +280,16 @@ export function caseStudies(): { at: string; simulated: boolean; cases: CaseStud
         `${pad(t)}  predictions registered and hashed before the data was read`,
         `${pad(h)}  held in both donor halves of the ${primary.region}`,
         `${pad(comp)}  still hold with the cell mix controlled`,
-        `${pad(same)}  point the same way in the ${second.region}   (chance: about ${Math.round(h / 2)})`,
+        `${pad(same)}  point the same way in the ${confirmation().name}   (chance: about ${Math.round(h / 2)})`,
         `${pad(nominal)}  nominally significant there (p < 0.05)`,
         `${pad(strict)}  pass the strict bar there (p < 0.05 / ${Math.max(1, h)})`,
       ].join("\n"),
       parts: [
-        { label: "What was tested", text: `Each gene the agent picked up got two predictions in its cell group: its expression tracks Braak Lewy-body stage, and it differs between resilient donors (stage ${RESILIENCE_STAGE} or above, never parkinsonian) and donors who developed parkinsonism. A prediction counts only if it reaches p < 0.05 on a random half of the ${primary.donors.length} donors, then again, the same way, on the other half.` },
-        { label: "What happened", text: `${h} of ${t} held: ${pct(h, t)}. If nothing were real, about ${luck} would pass by luck. The ones that held were then retested in the ${second.region}, the neighbouring dopamine nucleus that Parkinson's largely spares: ${same} point the same way, ${nominal} at p < 0.05, and ${strict} clear a bar corrected for testing ${h} things at once.` },
-        { label: "What it means", text: `Consistency between the two regions says the direction is not noise. It does not say the change is protective or harmful, and in the nigra it can be survivorship: the dopamine neurons left in late disease are not a random sample of the ones that were there. Case 03 takes that up.` },
+        { label: "What was tested", text: `Each gene the agent picked up got predictions it sealed before reading the atlas: ${primary.agentAxes.map((a) => AXIS_LABEL[a]).join(", and ")}${primary.agentAxes.length === 1 ? ", in its cell group and in the dopamine neurons" : ", in its cell group"}. A prediction counts only if it reaches p < 0.05 on a random half of the ${primary.donors.length} donors, then again, the same way, on the other half.` },
+        { label: "What happened", text: `${h} of ${t} held: ${pct(h, t)}. If nothing were real, about ${luck} would pass by luck. The ones that held were then retested in ${confirmWords()}: ${same} point the same way, ${nominal} at p < 0.05, and ${strict} clear a bar corrected for testing ${h} things at once.` },
+        { label: "What it means", text: `Consistency between the two says the direction is not noise. It does not say the change is protective or harmful, and in the nigra it can be survivorship: the dopamine neurons left in late disease are not a random sample of the ones that were there. Case 03 takes that up.` },
       ],
-      limit: `limit: two regions, largely the same donors · no age/sex/PMI adjustment in the registered test · pseudobulk, not single cells${simNote}`,
+      limit: `limit: ${confirmation().kind === "region" ? "two regions, largely the same donors" : "two cohorts, small ones"}; no covariate adjustment in the registered test; pseudobulk, not single cells${simNote}`,
     });
   }
 
@@ -287,7 +305,7 @@ export function caseStudies(): { at: string; simulated: boolean; cases: CaseStud
         `${top.gene} · ${top.group} · ${axisWords[top.axis]}`,
         `  ${primary.region.padEnd(34)} ${st(top.discovery)} → ${st(top.replication)}   held`,
         `  cell mix controlled                ${top.checks?.composition ? `${fmtE(top.checks.composition.effect)} (p ${fmtP(top.checks.composition.p)}) ${top.checks.composition.ok ? "holds" : "does not hold"}` : "n/a"}`,
-        `  ${second.region.padEnd(34)} ${fmtE(s2.effect)} (p ${fmtP(s2.p)})   bar ${fmtP(strictAlpha)}`,
+        `  ${confirmation().name.padEnd(34)} ${fmtE(s2.effect)} (p ${fmtP(s2.p)})${s2.proxy ? ` ${s2.proxy}` : ""}   bar ${fmtP(strictAlpha)}`,
       ].join("\n"),
       parts: [
         { label: "What happened", text: `${top.gene} in ${top.group} ${AXIS_LABEL[top.axis]}: ${st(top.discovery)} in the discovery half and ${st(top.replication)} in the held-out half. In the ${second.region} it points the same way at p ${fmtP(s2.p)}, ${s2.p < strictAlpha ? "under" : "above"} the corrected bar of ${fmtP(strictAlpha)}.` },
@@ -350,16 +368,16 @@ export function caseStudies(): { at: string; simulated: boolean; cases: CaseStud
       ascii: [
         `${pad(sw.count)}  swarm cases opened on failed predictions`,
         `${pad(sw.followups)}  follow-ups registered for tissue the agent had not seen`,
-        `${pad(sw.same_sign)}  of those point the same way in the ${second.region}`,
+        `${pad(sw.same_sign)}  of those point the same way in the ${confirmation().name}`,
         `${pad(sw.confirmed)}  pass the strict bar there`,
         "",
         ...ups.map((u) => { const r = json<{ effect?: number; p?: number }>(u.result, {}); return `  ${u.gene.padEnd(9)} ${u.grp.padEnd(18)} ${u.axis.padEnd(11)} ${fmtE(r.effect ?? 0)}  p ${fmtP(r.p ?? 1)}${u.passed ? "  confirmed" : ""}`; }),
       ].join("\n"),
       parts: [
-        { label: "What happened", text: "Every failed prediction got a case. The analysts checked whether the effect was underpowered, confounded by age, sex or post-mortem interval, explained by the cell mix, or carried by one donor, and proposed better-aimed predictions. Proposals that survived the challenges were sealed and tested in the second region, at a bar corrected for every follow-up so far." },
+        { label: "What happened", text: `Every failed prediction got a case. The analysts checked whether the effect was underpowered, confounded by ${covariateWords(primary)}, explained by the cell mix, or carried by one donor, and proposed better-aimed predictions. Proposals that survived the challenges were sealed and tested in ${confirmation().short}, at a bar corrected for every follow-up so far.` },
         { label: "Why it matters", text: "A negative result becomes the next experiment instead of a dead end. Because the swarm works on the donors whose test failed, it cannot confirm anything there; everything it proposes goes to tissue it has not read." },
       ],
-      limit: `limit: follow-ups are chosen on the full first-region sample, then tested on largely the same donors' second region${simNote}`,
+      limit: `limit: follow-ups are chosen on the full first sample, then tested on ${confirmation().kind === "region" ? "largely the same donors' second region" : "an independent cohort that has no Lewy staging"}${simNote}`,
     });
   }
 

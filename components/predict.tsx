@@ -24,7 +24,8 @@ const toB64 = (b: Uint8Array) => btoa(String.fromCharCode(...b));
 const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const txLink = (sig: string | null) => (sig && !sig.startsWith("account:") ? explorer("tx", sig) : null);
 
-export function Predict({ groups, chainMode, donors }: { groups: string[]; chainMode: string; donors: number }) {
+export function Predict({ groups, axes, chainMode, donors }: { groups: string[]; axes?: string[]; chainMode: string; donors: number }) {
+  const outcomes = AXES.filter(([v]) => !axes || axes.includes(v));
   const { publicKey, signTransaction } = useWallet();
   const [f, setF] = useState({ gene: "", group: "dopamine neurons", axis: "braak", by: "" });
   const [busy, setBusy] = useState<string | null>(null);
@@ -76,7 +77,7 @@ export function Predict({ groups, chainMode, donors }: { groups: string[]; chain
       <form className="predict" onSubmit={anonymous} autoComplete="off">
         <label>gene<input required value={f.gene} onChange={(e) => setF({ ...f, gene: e.target.value })} placeholder="GBA1" maxLength={16} spellCheck={false} /></label>
         <label>cell type<select value={f.group} onChange={(e) => setF({ ...f, group: e.target.value })}>{groups.map((g) => <option key={g}>{g}</option>)}</select></label>
-        <label>outcome<select value={f.axis} onChange={(e) => setF({ ...f, axis: e.target.value })}>{AXES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+        <label>outcome<select value={f.axis} onChange={(e) => setF({ ...f, axis: e.target.value })}>{outcomes.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="who">your name on the record (optional)<input value={f.by} onChange={(e) => setF({ ...f, by: e.target.value })} maxLength={40} placeholder="anonymous" spellCheck={false} /></label>
         <div className="actions">
           <button className="btn" type="submit" disabled={!!busy}>Register and test</button>

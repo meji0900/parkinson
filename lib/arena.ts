@@ -81,7 +81,9 @@ export function standings(): { agents: Standing[]; house: Standing; crowd: { n: 
 
   // james's own predictions are the ones it seals while reading genes
   const hp = one<PredRow>(PRED_SQL.replace("%KEY%", "'james'").replace("%WHERE%", "source = 'agent'"), cohort);
-  const hf = one<{ n: number; brier: number | null }>("select count(*) as n, avg(brier) as brier from forecasts where who = ? and y is not null", HOUSE);
+  const hf = one<{ n: number; brier: number | null }>(
+    "select count(*) as n, avg(f.brier) as brier from forecasts f join experiments e on e.registration = f.registration and e.cohort = ? where f.who = ? and f.y is not null", cohort, HOUSE,
+  );
   const hs = {
     id: "james", name: "james", about: "the agent running this site", homepage: null, at: "", house: true,
     predictions: { made: hp?.made ?? 0, held: hp?.held ?? 0, mix: hp?.mix ?? 0, second: hp?.second ?? 0 },

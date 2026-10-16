@@ -41,3 +41,6 @@ next-env.d.ts
 /chain/tests-svm/target/
 /chain/tests-svm/accounts.json
 !/chain/target/idl/
+
+# python
+__pycache__/

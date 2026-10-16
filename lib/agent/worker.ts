@@ -96,6 +96,10 @@ export async function closeWindows(pace = PACE) {
     const closed = closeWindow(registration);
     if (!closed) continue;
     const { exp, window: w } = closed;
+    if (!w) {
+      pushEvent({ gene: exp.gene, k: "forecast", x: `the window on ${exp.gene} (${AXIS_SHORT[exp.axis]}, ${exp.group}) closed, but it was sealed on an atlas that has since been replaced: voided, nothing scored.` });
+      continue;
+    }
     setStatus({ state: "testing", gene: exp.gene });
     const events: AgentEvent[] = [];
     const say = async (e: Omit<AgentEvent, "gene">) => {

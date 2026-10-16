@@ -4,8 +4,8 @@
 // corrected for every follow-up made so far.
 import { all, json, nowIso, one, run } from "@/lib/server/db";
 import { hashOf } from "@/lib/server/hash";
-import { AXES, AXIS_LABEL, cohorts, GROUPS, type Axis, type Cohort, type Group } from "./cohort";
-import { adjusted, ALPHA, axisStat, everyone, PROTOCOL, type Experiment } from "./experiments";
+import { AXIS_LABEL, cohorts, GROUPS, type Axis, type Cohort, type Group } from "./cohort";
+import { adjusted, ALPHA, axisStat, confirmStat, covariateWords, everyone, PROTOCOL, type Experiment } from "./experiments";
 import { fisherCI, fmtE, fmtP, type Stat } from "./stats";
 
 export type AgentNote = { agent: string; angle: string; said: string };
@@ -27,18 +27,20 @@ function challenges(c: Cohort, gene: string, group: Group, axis: Axis, values: n
   const share = axisStat(c, c.donors.map((d) => d.share[group]), idx, axis);
   const loo = idx.map((drop) => axisStat(c, values, idx.filter((i) => i !== drop), axis).effect);
   const flips = loo.filter((e) => Math.sign(e) !== Math.sign(base.effect)).length;
-  const mild = axisStat(c, values, idx.filter((i) => c.donors[i].braak < 6), axis);
+  // the effect without the most severely affected donors (stage 6), where the atlas is staged
+  const staged = c.axes.includes("braak");
+  const mild = staged ? axisStat(c, values, idx.filter((i) => c.donors[i].braak < 6), axis) : base;
   const same = (x: Stat) => Math.sign(x.effect) === Math.sign(base.effect);
   return {
     base,
-    confounder: { ok: conf.p < ALPHA && same(conf), said: `adjusted for age, sex and PMI: ${s(conf)}. ${conf.p < ALPHA && same(conf) ? "holds up." : "does not hold up."}` },
+    confounder: { ok: conf.p < ALPHA && same(conf), said: `adjusted for ${covariateWords(c)}: ${s(conf)}. ${conf.p < ALPHA && same(conf) ? "holds up." : "does not hold up."}` },
     composition: {
       ok: comp.p < ALPHA && same(comp),
       said: `${group} share of nuclei vs axis ${fmtE(share.effect)} (p ${fmtP(share.p)}); controlling for it: ${s(comp)}. ${comp.p < ALPHA && same(comp) ? "not the mix." : "could be the mix."}`,
     },
     skeptic: {
       ok: flips === 0 && mild.p < 0.1 && same(mild),
-      said: `leave-one-out range ${fmtE(Math.min(...loo))} to ${fmtE(Math.max(...loo))}, sign flips ${flips}; without severely affected donors ${s(mild)}. ${flips === 0 && mild.p < 0.1 && same(mild) ? "robust." : "fragile."}`,
+      said: `leave-one-out range ${fmtE(Math.min(...loo))} to ${fmtE(Math.max(...loo))}, sign flips ${flips}${staged ? `; without severely affected donors ${s(mild)}` : ""}. ${flips === 0 && mild.p < 0.1 && same(mild) ? "robust." : "fragile."}`,
     },
   };
 }
@@ -58,7 +60,7 @@ export function openCase(receipt: number, exp: Experiment): SwarmCase {
       agent: "power", angle: "underpowered or absent?",
       said: `full sample ${s(ch.base)}, 95% CI ${fmtE(lo)} to ${fmtE(hi)}. ${lo < 0 && hi > 0 ? (hi - lo > 0.5 ? "the interval is wide: not enough donors to tell." : "the interval sits on zero: probably nothing there.") : "the interval excludes zero: something may be there, smaller than a half can see."}`,
     });
-    agents.push({ agent: "confounder", angle: "age, sex, PMI", said: ch.confounder.said });
+    agents.push({ agent: "confounder", angle: covariateWords(c), said: ch.confounder.said });
     agents.push({ agent: "composition", angle: "cell mix", said: ch.composition.said });
     agents.push({ agent: "skeptic", angle: "robustness", said: ch.skeptic.said });
   }
@@ -71,7 +73,7 @@ function finishCase(receipt: number, exp: Experiment, agents: AgentNote[], propo
   const current = values ? axisStat(c, values, idx, axis) : null;
 
   // cell type analyst: the same gene and outcome in the other groups
-  const others = GROUPS.filter((g) => g !== group)
+  const others = GROUPS.filter((g) => g !== group && c.groups.includes(g))
     .map((g) => ({ g, v: c.expr(gene, g) }))
     .filter((x): x is { g: Group; v: number[] } => !!x.v)
     .map((x) => ({ ...x, st: axisStat(c, x.v, idx, axis) }))
@@ -84,7 +86,7 @@ function finishCase(receipt: number, exp: Experiment, agents: AgentNote[], propo
 
   // axis analyst: the same gene and group against the other pathology measures
   const axes = values
-    ? AXES.filter((a) => a !== axis).map((a) => ({ a, st: axisStat(c, values, idx, a) })).sort((x, y) => x.st.p - y.st.p)
+    ? c.axes.filter((a) => a !== axis).map((a) => ({ a, st: axisStat(c, values, idx, a) })).sort((x, y) => x.st.p - y.st.p)
     : [];
   const bestAxis = axes.find((x) => x.st.p < 0.01);
   agents.push({
@@ -116,7 +118,7 @@ function finishCase(receipt: number, exp: Experiment, agents: AgentNote[], propo
     const n = (one<{ n: number }>("select count(*) as n from followups")?.n ?? 0) + 1;
     const alpha = ALPHA / n;
     const v2 = second.expr(gene, p.group);
-    const st = v2 ? axisStat(second, v2, everyone(second), p.axis) : null;
+    const st = v2 ? confirmStat(second, v2, p.axis) : null;
     const same = !!st && Math.sign(st.effect) === Math.sign(p.effect);
     const passed = !!st && same && st.p < alpha;
     run(
@@ -125,7 +127,7 @@ function finishCase(receipt: number, exp: Experiment, agents: AgentNote[], propo
     );
     followups.push({
       registration, prediction: `${gene} · ${p.group} · ${p.axis}`,
-      test: st ? `${second.region} ${fmtE(st.effect)} p ${fmtP(st.p)} (needs p < ${fmtP(alpha)})` : `${second.region}: not measured`,
+      test: st ? `${second.region}${st.proxy ? ` (${st.proxy})` : ""} ${fmtE(st.effect)} p ${fmtP(st.p)} (needs p < ${fmtP(alpha)})` : `${second.region}: ${v2 ? "no way to test this outcome there" : "not measured"}`,
       passed, same_sign: same, alpha,
     });
   }

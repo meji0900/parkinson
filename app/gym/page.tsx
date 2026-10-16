@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Sec } from "@/components/sections";
 import { AXIS_SHORT } from "@/lib/atlas/cohort";
 import { ANALYST_READS, ANALYSTS, gym, type Evaluation } from "@/lib/atlas/gym";
-import { cohorts } from "@/lib/atlas/cohort";
+import { cohorts, confirmation } from "@/lib/atlas/cohort";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -75,7 +75,7 @@ export default function GymPage() {
           </p>
           <p>
             <b>Follow-up.</b> The swarm proposed a new prediction after a failure. Will it point the same way, at p &lt; 0.05, in the{" "}
-            {second.region}? The analysts see only the first region.
+            {confirmation().kind === "region" ? second.region : confirmation().name}? The analysts see only the first {confirmation().kind === "region" ? "region" : "atlas"}.
           </p>
           <p>
             Each answer is a probability, scored with the Brier score: the average squared distance between the probability and what happened (0

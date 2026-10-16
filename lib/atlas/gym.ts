@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { all, json, kvGet, kvSet, nowIso } from "@/lib/server/db";
 import { hashOf } from "@/lib/server/hash";
-import { cohorts, isAxis, isGroup, RESILIENCE_STAGE, type Axis, type Cohort, type Group } from "./cohort";
+import { cohorts, isAxis, isGroup, type Axis, type Cohort, type Group } from "./cohort";
 import { ALPHA, axisStat, everyone, halves, listExperiments, PROTOCOL } from "./experiments";
 import { mean, rankBiserial, residualize, zP, type Stat } from "./stats";
 
@@ -43,7 +43,7 @@ function readings(c: Cohort, values: number[], idx: number[], axis: Axis, nextN:
   const sub = (f: (i: number) => number) => idx.map(f);
   const place = (v: number[]) => { const out = new Array<number>(values.length).fill(0); idx.forEach((i, k) => (out[i] = v[k])); return out; };
   const vals = sub((i) => values[i]);
-  const covs = [sub((i) => c.donors[i].age), sub((i) => c.donors[i].female), sub((i) => c.donors[i].pmi)];
+  const covs = c.covariates.map((k) => sub((i) => c.donors[i][k]));
   const kept = (s: Stat) => (Math.sign(s.effect) === sign ? Math.min(1, Math.abs(s.effect) / Math.max(1e-6, Math.abs(base.effect))) : 0);
 
   const r = Math.min(0.95, Math.abs(base.effect));
@@ -52,13 +52,13 @@ function readings(c: Cohort, values: number[], idx: number[], axis: Axis, nextN:
   const comp = kept(axisStat(c, place(residualize(vals, [...covs, sub((i) => c.donors[i].share[group])])), idx, axis));
   const m = mean(vals), sd = Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / vals.length);
   const cell = m > 0 ? m / (m + sd) : 0;
-  const other: Axis = axis === "braak" ? "nigra" : "braak";
-  const os = axisStat(c, values, idx, other);
+  const other = c.axes.find((a) => a !== axis && a !== "resilience") ?? (axis === "resilience" ? "braak" : axis);
+  const os = other === axis ? { effect: 0, p: 1, n: 0, stat: "none" } : axisStat(c, values, idx, other);
   const expect = axis === "resilience" ? -sign : sign; // a gene higher in resilient donors should fall with stage
   const ax = Math.sign(os.effect) === expect ? 1 - Math.min(1, os.p) : 0;
   const loo = idx.map((drop) => axisStat(c, values, idx.filter((i) => i !== drop), axis));
   const worst = Math.max(...loo.map((s) => (Math.sign(s.effect) === sign ? s.p : 1)));
-  const mild = axisStat(c, values, idx.filter((i) => c.donors[i].braak < 6), axis);
+  const mild = c.axes.includes("braak") ? axisStat(c, values, idx.filter((i) => c.donors[i].braak < 6), axis) : base;
   const skeptic = 0.5 * Math.min(1, -Math.log10(Math.max(worst, 1e-12)) / 3) + 0.5 * (Math.sign(mild.effect) === sign && mild.p < 0.1 ? 1 : 0);
   return [power, conf, comp, cell, ax, skeptic].map(round);
 }
@@ -77,7 +77,7 @@ export function replicationTasks(): Task[] {
       const values = c.expr(e.gene, e.group);
       if (!values) { memo.set(key, null); continue; }
       const [a, b] = halves(e.registration, c.donors.length);
-      const nextN = e.axis === "resilience" ? b.filter((i) => c.donors[i].braak >= RESILIENCE_STAGE).length : b.length;
+      const nextN = e.axis === "resilience" ? b.filter((i) => c.donors[i].braak >= c.resilienceStage).length : b.length;
       memo.set(key, {
         kind: "replication", ref: e.registration, gene: e.gene, group: e.group, axis: e.axis, at: e.at,
         x: readings(c, values, a, e.axis, nextN, e.group), y: e.passed ? 1 : 0, split: splitOf(e.gene),
@@ -102,7 +102,7 @@ export function followupTasks(): Task[] {
       const res = json<{ p?: number }>(r.result, {});
       const values = c.expr(r.gene, r.grp);
       if (res.p == null || !values) { memo.set(key, null); continue; }
-      const nextN = r.axis === "resilience" ? second.donors.filter((d) => d.braak >= RESILIENCE_STAGE).length : second.donors.length;
+      const nextN = r.axis === "resilience" ? second.donors.filter((d) => d.braak >= second.resilienceStage).length : second.donors.length;
       memo.set(key, {
         kind: "followup", ref: r.registration, gene: r.gene, group: r.grp, axis: r.axis, at: r.at,
         x: readings(c, values, everyone(c), r.axis, nextN, r.grp), y: r.same_sign && res.p < ALPHA ? 1 : 0, split: splitOf(r.gene),

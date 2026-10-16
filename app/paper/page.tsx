@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PrintButton } from "@/components/print-button";
 import { THRESHOLD, WEIGHTS } from "@/lib/agent/types";
-import { RESILIENCE_STAGE } from "@/lib/atlas/cohort";
 import { standings } from "@/lib/arena";
 import { scoreboard } from "@/lib/atlas/forecasts";
 import { gym } from "@/lib/atlas/gym";
 import { listStudies } from "@/lib/atlas/studies";
 import { BRAND } from "@/lib/brand";
 import { REFS, refHref, refLink } from "@/lib/sources";
-import { atlasInfo, funnel } from "@/lib/views";
+import { atlasInfo, confirmWords, funnel } from "@/lib/views";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 const CITED = [
-  "parkinson1817", "braak2003", "kamath2022", "martirosyan2024", "wang2024", "nalls2019", "kim2024", "sidransky2009", "nelson2015", "plate1995",
+  "parkinson1817", "braak2003", "volpato2025", "kamath2022", "martirosyan2024", "wang2024", "nalls2019", "kim2024", "sidransky2009", "nelson2015", "plate1995",
   "cheng2010", "siderowf2023", "simuni2024", "hoglinger2024",
 ] as const;
 
@@ -46,9 +45,10 @@ export default function PaperPage() {
             score and a 1,024-dimensional holographic vector that must give every finding back, and either writes an experiment a lab could run or
             prints a receipt saying why it could not. It then registers predictions about a substantia nigra atlas by hash before reading any data,
             tests each on a random half of the donors and requires it to replicate on the other half. Failures print receipts in a hash chain that
-            browsers verify; a swarm of six analysts reopens each failure and sends surviving proposals to a second region. So far{" "}
+            browsers verify; a swarm of six analysts reopens each failure and sends surviving proposals to {a.second.short}.{" "}
+            {a.simulated ? null : <>The atlas is human tissue: {a.label}, confirmed in an independent cohort ({a.second.label}). </>}So far{" "}
             {tested.toLocaleString("en")} predictions have been tested, {held} held in both halves, {comp} survived control for the cell mix,{" "}
-            {same} pointed the same way in the {a.second.region} and {strict} cleared a bar corrected for every test
+            {same} pointed the same way in the {a.second.name} and {strict} cleared a bar corrected for every test
             {a.simulated ? ". These numbers come from a simulated cohort and test the method, not biology" : ""}. Nothing has been tested in a lab.
           </p>
         </div>
@@ -66,8 +66,8 @@ export default function PaperPage() {
         <p><strong>2.1 Readers and score.</strong> Six readers each return a score in [0, 1]: genetic association with Parkinson&apos;s (weight {WEIGHTS.genetics}), literature pairing the gene with Parkinson&apos;s or α-synuclein, inverted (weight {WEIGHTS.lit}), cell-type enrichment in dopamine neurons, astrocytes or microglia, with midbrain enrichment standing in for dopamine neurons (weight {WEIGHTS.cell}), pathway membership weighted towards mitophagy, the lysosome, vesicle traffic and the dopamine synapse (weight {WEIGHTS.path}), tractability (weight {WEIGHTS.chem}) and prior trials, penalised when stopped (weight {WEIGHTS.clinic}). Below a translation score of {THRESHOLD} there is no case and a receipt is printed.</p>
         <p><strong>2.2 Merge check.</strong> Each finding&apos;s level is bound to a role vector by circular convolution and the six are summed into one 1,024-dimensional vector; each is then unbound. If the right level is not the closest for every role, the run is not trusted.</p>
         <p><strong>2.3 Hypothesis.</strong> A proposal names the gene, the cell type, both perturbation directions (direction is never guessed), a molecular readout keyed on pathway theme, a functional readout keyed on cell type, and the result that would rule it out.</p>
-        <p><strong>2.4 Sealing and testing.</strong> A prediction is a gene, one of eight cell groups, and one of three outcomes: tracks Braak Lewy-body stage, tracks nigral neuron loss, or differs between resilient donors (stage {RESILIENCE_STAGE} or beyond, never parkinsonian) and donors who developed parkinsonism. Its registration is the SHA-256 of a canonical JSON record, stored before any expression value is read; the donor split is seeded by that hash. It holds if it reaches p &lt; 0.05 with the same sign in both halves (Spearman correlation, or rank-biserial correlation for resilience).</p>
-        <p><strong>2.5 Confirmation.</strong> Predictions that hold are recomputed on all donors with the cell group&apos;s share of nuclei, age, sex and post-mortem interval regressed out, then tested in a second region.</p>
+        <p><strong>2.4 Sealing and testing.</strong> A prediction is a gene, one of the {a.groups.length} cell groups the atlas measured, and one of the outcomes it can test ({a.axes.map((x) => x.label).join("; ")}); resilience compares donors at Lewy-body stage {a.staging.resilience_stage} or beyond who never became parkinsonian with those who did. Its registration is the SHA-256 of a canonical JSON record, stored before any expression value is read; the donor split is seeded by that hash. It holds if it reaches p &lt; 0.05 with the same sign in both halves (Spearman correlation, or rank-biserial correlation for resilience).</p>
+        <p><strong>2.5 Confirmation.</strong> Predictions that hold are recomputed on all donors with the cell group&apos;s share of nuclei and {a.covariates} regressed out, then tested in {confirmWords()}.</p>
         <p><strong>2.6 The swarm.</strong> Each failure is reopened by six analysts (power, confounder, composition, skeptic, cell type, axis). Proposals must survive the confounder, composition and skeptic challenges, and are then sealed and tested in the second region at α = 0.05 divided by the number of follow-ups so far.</p>
         <p><strong>2.7 Studies.</strong> Gene-set questions are sealed with their direction and bar, scored as donors&apos; mean z-scored expression, required to hold in both halves and to beat 95% of 1,000 expression-matched random gene sets. Their permutation p-values are open to verified outside compute.</p>
         <p><strong>2.8 The gym.</strong> Questions with known answers in the ledger (will a discovery-half result replicate; will a follow-up hold in the second region) are used to score the analysts&apos; readings by Brier score and AUC, fit their weights on genes split by hash, and seal the fitted weights to be judged on future predictions only.</p>
@@ -95,7 +95,7 @@ export default function PaperPage() {
         <h2>4. Limitations</h2>
         <ul>
           <li>The human data are post-mortem and observational; in the nigra, late-stage dopamine neurons are survivors, and an average over them can move without any cell changing.</li>
-          <li>{a.simulated ? "The atlas used here is simulated: every count above describes the method, not Parkinson's biology." : "One atlas and one second region, largely in the same donors."}</li>
+          <li>{a.simulated ? "The atlas used here is simulated: every count above describes the method, not Parkinson's biology." : `Two small cohorts (${a.donors} and ${a.second.donors} donors), so most real effects are too small to replicate in a half; the first is a preprint, gives the Lewy-body stage only in bins and has no age or post-mortem interval per donor; the second has no staging, so it confirms by disease status.`}</li>
           <li>Readouts come from a fixed table; weights are a design choice; short gene symbols make literature counts noisy.</li>
           <li>No intervention has been tested; the agent proposes experiments, it does not run them.</li>
         </ul>

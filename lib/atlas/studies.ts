@@ -8,7 +8,7 @@ import { json, nowIso, one, run, all } from "@/lib/server/db";
 import type { AgentEvent } from "@/lib/server/events";
 import { hashOf } from "@/lib/server/hash";
 import { sleep } from "@/lib/server/http";
-import { AXIS_LABEL, cohorts, RESILIENCE_STAGE, seeded, type Axis, type Cohort, type Group } from "./cohort";
+import { AXIS_LABEL, cohorts, seeded, type Axis, type Cohort, type Group } from "./cohort";
 import { ALPHA, axisStat, everyone, halves, PROTOCOL } from "./experiments";
 import { fmtE, fmtP, mean, ranks, type Stat } from "./stats";
 
@@ -121,9 +121,12 @@ export const getStudy = (id: string) => {
 export const listStudies = () => all<Row>("select * from studies where cohort = ? order by at", cohorts().primary.id).map(toStudy);
 
 /** the next study in the queue that has not been sealed on this cohort yet */
+/** whether the atlas has what a study needs: its cell group and its outcome */
+export const runnable = (d: StudyDef, c: Cohort = cohorts().primary) => c.groups.includes(d.group) && c.axes.includes(d.axis);
+
 export function nextStudy(): StudyDef | null {
   const { primary } = cohorts();
-  return STUDIES.find((s) => !one("select 1 from studies where id = ? and cohort = ?", s.id, primary.id)) ?? null;
+  return STUDIES.find((s) => runnable(s, primary) && !one("select 1 from studies where id = ? and cohort = ?", s.id, primary.id)) ?? null;
 }
 
 export const registrationOfStudy = (d: StudyDef, cohortId: string) =>
@@ -271,7 +274,7 @@ export function permutationInput(id: string): { a: number[]; b: number[]; observ
   let idx = everyone(c);
   let outcome: number[];
   if (st.def.axis === "resilience") {
-    idx = idx.filter((i) => c.donors[i].braak >= RESILIENCE_STAGE);
+    idx = idx.filter((i) => c.donors[i].braak >= c.resilienceStage);
     outcome = idx.map((i) => (c.donors[i].parkinsonism ? 0 : 1));
   } else {
     const ax = st.def.axis;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CellStrip, Sec } from "@/components/sections";
 import { POINTS, standings, type Standing } from "@/lib/arena";
-import { cohorts } from "@/lib/atlas/cohort";
+import { cohorts, confirmation } from "@/lib/atlas/cohort";
 import { all } from "@/lib/server/db";
 import { BRAND } from "@/lib/brand";
 
@@ -29,7 +29,7 @@ function Row({ s, rank }: { s: Standing; rank: number | null }) {
       <div className="st-held">
         <span className="st-k">predictions held</span>
         <span className="score-cells"><CellStrip value={rate} /><b className="m">{s.predictions.held}/{s.predictions.made}</b></span>
-        {s.predictions.held > 0 && <span className="sub">{s.predictions.mix} survive the cell mix, {s.predictions.second} in the second region</span>}
+        {s.predictions.held > 0 && <span className="sub">{s.predictions.mix} survive the cell mix, {s.predictions.second} in {confirmation().short}</span>}
       </div>
       <div className="st-fc">
         <span className="st-k">forecasts, Brier</span>
@@ -111,7 +111,7 @@ prediction about a Parkinson's gene in the cell group you think it acts in.`}</p
           <pre className="ascii">{[
             `held prediction                     ${POINTS.held} points`,
             `  and it survives the cell mix     +${POINTS.mix}`,
-            `  and holds in the second region   +${POINTS.second}`,
+            `  and holds in ${confirmation().short.padEnd(17)}+${POINTS.second}`,
             `verified compute unit               ${POINTS.unit} point`,
             `forecasts                           ${POINTS.forecast} x (james's Brier - yours), summed`,
           ].join("\n")}</pre>

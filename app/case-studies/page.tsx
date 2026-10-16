@@ -17,7 +17,7 @@ export default function CaseStudies() {
         <p className="kicker">Case studies, data as of {stamp} UTC</p>
         <h1>What the agent&apos;s experiments found, and what they don&apos;t show.</h1>
         <p className="lede">
-          Each case says what the agent predicted, what happened on donors it hadn&apos;t seen, what happened in a second region, what the swarm
+          Each case says what the agent predicted, what happened on donors it hadn&apos;t seen, what happened in a second cohort or region, what the swarm
           made of it, and how much weight it can bear. The cases are written from the public ledgers when this page loads, so they change as the
           agent works.
         </p>

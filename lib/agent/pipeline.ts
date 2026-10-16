@@ -1,6 +1,6 @@
 // One investigation, start to finish. Every step is emitted as an event, so the same run can stream to
 // a visitor's terminal, feed the live page, or be replayed later from the stored record.
-import { AXIS_LABEL, AXIS_SHORT, cohorts, type Axis } from "@/lib/atlas/cohort";
+import { AXIS_LABEL, AXIS_SHORT, cohorts, type Axis, type Group } from "@/lib/atlas/cohort";
 import { seal, test, type Experiment } from "@/lib/atlas/experiments";
 import { fmtE, fmtP, type Stat } from "@/lib/atlas/stats";
 import { openWindow } from "@/lib/atlas/forecasts";
@@ -158,18 +158,39 @@ async function conclude(
   return record;
 }
 
+/**
+ * The predictions the agent seals for a gene: its cell group with each outcome the atlas lets the agent test. When the
+ * atlas has a single outcome, the same outcome in dopamine neurons as well, the cells Parkinson's kills. A cell group the
+ * atlas did not measure is replaced by dopamine neurons, and the console says so.
+ */
+function plan(home: Group, primary: ReturnType<typeof cohorts>["primary"]) {
+  const DA: Group = "dopamine neurons";
+  const group = primary.groups.includes(home) ? home : primary.groups.includes(DA) ? DA : primary.groups[0];
+  const axes = primary.agentAxes.length ? primary.agentAxes : primary.axes.slice(0, 1);
+  const pairs: { group: Group; axis: Axis }[] = axes.slice(0, 2).map((axis) => ({ group, axis }));
+  if (pairs.length === 1 && group !== DA && primary.groups.includes(DA)) pairs.push({ group: DA, axis: pairs[0].axis });
+  return { group, pairs, swapped: group !== home };
+}
+
 async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
   const { primary } = cohorts();
-  const group = groupForCell(kind);
-  await say({ k: "atlas", x: `sealing two predictions for ${G} in ${group} of the ${primary.region} before reading the atlas${primary.simulated ? " (simulated cohort)" : ""}.` });
+  const home = groupForCell(kind);
+  const { group, pairs, swapped } = plan(home, primary);
+  if (!pairs.length) {
+    await say({ k: "atlas", x: `this atlas has no outcome to test, so ${G} gets no prediction.` });
+    return;
+  }
+  if (swapped) await say({ k: "atlas", x: `the atlas has no ${home}; ${G} is tested in ${group} instead.` });
+  const where = new Set(pairs.map((p) => p.group)).size > 1 ? pairs.map((p) => p.group).join(" and ") : group;
+  await say({ k: "atlas", x: `sealing ${pairs.length === 1 ? "a prediction" : `${pairs.length} predictions`} for ${G} in ${where} of the ${primary.region} before reading the atlas${primary.simulated ? " (simulated cohort)" : ""}.` });
   const sealed: { exp: Experiment; axis: Axis }[] = [];
-  for (const axis of ["braak", "resilience"] as Axis[]) {
-    const { exp, repeat } = seal({ gene: G, group, axis, source: "agent" });
+  for (const { group: g, axis } of pairs) {
+    const { exp, repeat } = seal({ gene: G, group: g, axis, source: "agent" });
     if (repeat) {
-      await say({ k: "register", x: `${G} · ${group} · ${axis} was sealed before (${exp.registration.slice(0, 12)}); ${exp.state === "sealed" ? "it is still open for forecasts" : `its result stands: ${exp.reason}`}.` });
+      await say({ k: "register", x: `${G} · ${g} · ${axis} was sealed before (${exp.registration.slice(0, 12)}); ${exp.state === "sealed" ? "it is still open for forecasts" : `its result stands: ${exp.reason}`}.` });
       continue;
     }
-    await say({ k: "register", x: `sealed ${exp.registration.slice(0, 16)}: ${G} ${AXIS_LABEL[axis]} in ${group}` });
+    await say({ k: "register", x: `sealed ${exp.registration.slice(0, 16)}: ${G} ${AXIS_LABEL[axis]} in ${g}` });
     sealed.push({ exp, axis });
   }
   // both seals share one transaction, and both results the next: the fee is per signature, not per memo
@@ -179,7 +200,7 @@ async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
     const open = sealed.map((s) => openWindow(s.exp, opts.window));
     await say({
       k: "forecast",
-      x: `forecasts are open on ${sealed.length === 1 ? "it" : "both"} until ${open[0].closes.slice(11, 16)} UTC. my own forecasts are sealed as ${open.map((o) => o.commit.slice(0, 10)).join(" and ")}; the numbers come out when the window closes. yours go in on the forecast page.`,
+      x: `forecasts are open on ${sealed.length === 1 ? "it" : "both"} until ${open[0].closes.slice(11, 16)} UTC. my own ${sealed.length === 1 ? "forecast is" : "forecasts are"} sealed as ${open.map((o) => o.commit.slice(0, 10)).join(" and ")}; ${sealed.length === 1 ? "the number comes" : "the numbers come"} out when the window closes. yours go in on the forecast page.`,
     });
     return;
   }

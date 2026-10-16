@@ -5,7 +5,7 @@
 import { addReceipt } from "@/lib/agent/receipts";
 import { all, json, nowIso, one, run } from "@/lib/server/db";
 import { hashOf } from "@/lib/server/hash";
-import { AXIS_LABEL, cohorts, GROUPS, RESILIENCE_STAGE, seeded, type Axis, type Cohort, type Group } from "./cohort";
+import { AXIS_LABEL, AXIS_SHORT, cohorts, GROUPS, seeded, type Axis, type Cohort, type Group } from "./cohort";
 import { fmtE, fmtP, rankBiserial, residualize, spearman, type Stat } from "./stats";
 
 export const PROTOCOL = 2;
@@ -13,7 +13,8 @@ export const ALPHA = 0.05;
 
 export type Checks = {
   composition?: { effect: number; p: number; n: number; ok: boolean };
-  second?: { cohort: string; effect: number; p: number; n: number; same_sign: boolean };
+  /** proxy: how the second cohort tested it when it lacks the outcome itself */
+  second?: { cohort: string; effect: number; p: number; n: number; same_sign: boolean; proxy?: string };
 };
 
 export type Experiment = {
@@ -71,9 +72,10 @@ export function listExperiments(opts: { gene?: string; wallet?: string; agent?: 
 // ---------------------------------------------------------------- statistics on one cohort
 export function axisStat(c: Cohort, values: number[], idx: number[], axis: Axis): Stat {
   const d = c.donors;
+  if (!c.axes.includes(axis)) return { effect: 0, p: 1, n: 0, stat: "no data for this outcome" };
   if (axis === "resilience") {
-    // heavy Lewy pathology either way; resilient donors never developed parkinsonism
-    const high = idx.filter((i) => d[i].braak >= RESILIENCE_STAGE);
+    // Lewy pathology either way; resilient donors never developed parkinsonism
+    const high = idx.filter((i) => d[i].braak >= c.resilienceStage);
     const resilient = high.filter((i) => !d[i].parkinsonism).map((i) => values[i]);
     const affected = high.filter((i) => d[i].parkinsonism).map((i) => values[i]);
     const st = rankBiserial(resilient, affected);
@@ -95,9 +97,32 @@ export function halves(registration: string, n: number): [number[], number[]] {
 
 export const everyone = (c: Cohort) => c.donors.map((_, i) => i);
 
-/** values with age, sex and PMI (and optionally the group's share of nuclei) regressed out */
+/** Parkinson's (or Lewy body dementia) against controls: positive when the gene is higher in the patients */
+export function diseaseStat(c: Cohort, values: number[], idx: number[]): Stat {
+  const pd = idx.filter((i) => c.donors[i].parkinsonism).map((i) => values[i]);
+  const ctrl = idx.filter((i) => !c.donors[i].parkinsonism).map((i) => values[i]);
+  const st = rankBiserial(pd, ctrl);
+  return Math.min(pd.length, ctrl.length) < 3 ? { ...st, p: 1 } : st;
+}
+
+/**
+ * A prediction that held, tested on the second cohort: the same outcome if that cohort has it; otherwise, for the
+ * Lewy-stage and nigral-loss outcomes, Parkinson's or LBD against controls, since a gene that moves with the disease's
+ * progress should differ between patients and controls. The resilience outcome needs staging, so it has no proxy.
+ */
+export function confirmStat(c: Cohort, values: number[], axis: Axis): (Stat & { proxy?: string }) | null {
+  if (c.axes.includes(axis)) return axisStat(c, values, everyone(c), axis);
+  if (axis === "resilience") return null;
+  return { ...diseaseStat(c, values, everyone(c)), proxy: "Parkinson's or LBD vs controls" };
+}
+
+/** the covariates a cohort adjusts for, in words */
+export const covariateWords = (c: Cohort) =>
+  c.covariates.map((k) => ({ age: "age", female: "sex", pmi: "PMI" })[k]).join(", ").replace(/, ([^,]*)$/, " and $1") || "nothing";
+
+/** values with the cohort's covariates (age, sex, PMI where known; optionally the group's share of nuclei) regressed out */
 export function adjusted(c: Cohort, values: number[], group: Group, withShare: boolean) {
-  const cov = [c.donors.map((d) => d.age), c.donors.map((d) => d.female), c.donors.map((d) => d.pmi)];
+  const cov = c.covariates.map((k) => c.donors.map((d) => d[k]));
   if (withShare) cov.push(c.donors.map((d) => d.share[group]));
   return residualize(values, cov);
 }
@@ -123,10 +148,17 @@ export function test(registration: string): Experiment {
   if (!exp) throw new Error("unknown registration");
   if (exp.state === "tested") return exp;
   const { primary, second } = cohorts();
+  if (exp.cohort !== primary.id) {
+    // sealed on an atlas that has since been replaced: its donors are gone, so it is voided rather than tested on others
+    run("update experiments set state = 'tested', passed = 0, reason = ? where registration = ?", `voided: sealed on ${exp.cohort}, which was replaced before the test`, registration);
+    return getExperiment(registration)!;
+  }
   const values = primary.expr(exp.gene, exp.group);
   let passed = false, reason: string, disc: Stat | null = null, rep: Stat | null = null, checks: Checks | null = null;
 
-  if (!values) {
+  if (!primary.axes.includes(exp.axis)) {
+    reason = `this atlas has no ${AXIS_SHORT[exp.axis]} measure`;
+  } else if (!values) {
     reason = `${exp.gene} is not measured in ${exp.group}`;
   } else {
     const [a, b] = halves(registration, primary.donors.length);
@@ -143,10 +175,8 @@ export function test(registration: string): Experiment {
       const comp = axisStat(primary, adjusted(primary, values, exp.group, true), everyone(primary), exp.axis);
       checks = { composition: { effect: comp.effect, p: comp.p, n: comp.n, ok: comp.p < ALPHA && Math.sign(comp.effect) === Math.sign(disc.effect) } };
       const v2 = second.expr(exp.gene, exp.group);
-      if (v2) {
-        const s = axisStat(second, v2, everyone(second), exp.axis);
-        checks.second = { cohort: second.id, effect: s.effect, p: s.p, n: s.n, same_sign: Math.sign(s.effect) === Math.sign(disc.effect) };
-      }
+      const s = v2 ? confirmStat(second, v2, exp.axis) : null;
+      if (s) checks.second = { cohort: second.id, effect: s.effect, p: s.p, n: s.n, same_sign: Math.sign(s.effect) === Math.sign(disc.effect), ...(s.proxy ? { proxy: s.proxy } : {}) };
     }
   }
 
