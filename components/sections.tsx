@@ -31,9 +31,56 @@ export function Plate({ src, alt, w, h, children, wide = false }: { src: string;
 }
 
 // ---------------------------------------------------------------- the pipeline
-// Every stage a prediction passes, left to right, as a descending stair: each step's height is the stage's
-// count on a log scale, so the drop from thousands sealed to a handful confirmed reads at a glance.
-const height = (n: number, max: number) => `${Math.max(4, (100 * Math.log10(n + 1)) / Math.log10(max + 1))}%`;
+// Every stage a prediction passes, drawn as the same patch of substantia nigra losing its pigmented neurons, the
+// way Parkinson's empties the nigra. The share of neurons still pigmented is the stage's count on a log scale;
+// where one is lost, a glial nucleus is left. The exact count is printed under each patch.
+const PATCH = { w: 140, h: 70, cx: 70, cy: 35, rx: 66, ry: 31 };
+
+function rng(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** one fixed patch for every stage: neurons on a jittered hex grid inside the section, in the order they will be lost */
+const NEURONS = (() => {
+  const r = rng(1817);
+  const cells: { x: number; y: number; rx: number; ry: number; a: number; gx: number; gy: number; order: number }[] = [];
+  for (let row = 0, y = 7; y < PATCH.h - 5; row++, y += 9.6) {
+    for (let x = 7 + (row % 2) * 5.5; x < PATCH.w - 5; x += 11) {
+      const jx = x + (r() - 0.5) * 4, jy = y + (r() - 0.5) * 3.6;
+      if (((jx - PATCH.cx) / (PATCH.rx - 4)) ** 2 + ((jy - PATCH.cy) / (PATCH.ry - 3)) ** 2 > 1) continue;
+      cells.push({ x: jx, y: jy, rx: 3.4 + r() * 1.3, ry: 2.6 + r() * 0.8, a: r() * 180, gx: (r() - 0.5) * 3, gy: (r() - 0.5) * 3, order: r() });
+    }
+  }
+  return cells.sort((a, b) => b.order - a.order);
+})();
+
+function NigraPatch({ share, empty = false }: { share: number; empty?: boolean }) {
+  const kept = share <= 0 ? 0 : Math.max(1, Math.round(share * NEURONS.length));
+  return (
+    <svg className="patch" viewBox={`0 0 ${PATCH.w} ${PATCH.h}`} preserveAspectRatio="xMinYMid meet" aria-hidden>
+      <ellipse className={empty ? "section empty" : "section"} cx={PATCH.cx} cy={PATCH.cy} rx={PATCH.rx} ry={PATCH.ry} />
+      {!empty && NEURONS.map((c, i) =>
+        i < kept ? (
+          <g key={i} transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${c.a.toFixed(0)})`}>
+            <ellipse className="soma" rx={c.rx.toFixed(1)} ry={c.ry.toFixed(1)} />
+            <circle className="melanin" cx={(c.rx * 0.3).toFixed(1)} cy={(-c.ry * 0.25).toFixed(1)} r={(c.ry * 0.38).toFixed(1)} />
+            <circle className="melanin" cx={(c.rx * 0.05).toFixed(1)} cy={(c.ry * 0.4).toFixed(1)} r={(c.ry * 0.3).toFixed(1)} />
+            <circle className="nucleus" cx={(-c.rx * 0.42).toFixed(1)} r={(c.ry * 0.36).toFixed(1)} />
+          </g>
+        ) : (
+          <circle key={i} className="glia" cx={(c.x + c.gx).toFixed(1)} cy={(c.y + c.gy).toFixed(1)} r="1.3" />
+        ),
+      )}
+    </svg>
+  );
+}
+
+const share = (n: number, max: number) => (n <= 0 ? 0 : Math.log10(n + 1) / Math.log10(max + 1));
 
 type Stage = { key: string; n: number; label: string; of?: number };
 export function Funnel({ stages, next, links = true, note }: { stages: Stage[]; next?: Stage; links?: boolean; note?: React.ReactNode }) {
@@ -43,7 +90,7 @@ export function Funnel({ stages, next, links = true, note }: { stages: Stage[]; 
       <ol className="pipeline">
         {stages.map((s, i) => (
           <li key={s.key} className={i === stages.length - 1 ? "last" : ""}>
-            <span className="track" aria-hidden><span className="step" style={{ height: height(s.n, max) }} /></span>
+            <span className="track"><NigraPatch share={share(s.n, max)} /></span>
             <span className="pn">{s.n.toLocaleString("en")}</span>
             <span className="pl">
               {links && s.key === "tested" ? <Link href="/findings">{s.label}</Link> : s.label}
@@ -53,13 +100,16 @@ export function Funnel({ stages, next, links = true, note }: { stages: Stage[]; 
         ))}
         {next && (
           <li className="next">
-            <span className="track" aria-hidden><span className="step" /></span>
+            <span className="track"><NigraPatch share={0} empty /></span>
             <span className="pn">{next.n}</span>
             <span className="pl">{next.label}</span>
           </li>
         )}
       </ol>
-      {note && <p className="band-note">{note}</p>}
+      <p className="band-note">
+        each patch is the same piece of nigra: the pigmented neurons left show the count on a log scale, blue dots are glia where they died
+        {note ? <>; {note}</> : null}
+      </p>
     </section>
   );
 }

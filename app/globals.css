@@ -169,18 +169,25 @@ main > .wide, main > article > .wide, main > .hero.split, main > .band, main > a
 .bench-foot .reset { background: none; border: 0; padding: 0; font: inherit; color: var(--dab); text-decoration: underline; text-underline-offset: 3px; }
 
 /* the pipeline: every stage a prediction passes, as a descending stair, counted from the ledgers */
-.band { margin: 0; padding: 22px 0 6px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+/* opaque, so the tissue in the margin passes behind the figures instead of through them */
+.band { position: relative; margin: 0; padding: 22px 0 6px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--glass); }
 .pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(96px, 1fr)); gap: 0; overflow-x: auto; scrollbar-width: thin; }
 .pipeline li { display: grid; grid-template-rows: 70px auto auto; padding: 0 14px 14px 0; position: relative; }
 .pipeline li + li { padding-left: 14px; border-left: 1px solid var(--rule); }
-.pipeline .track { display: flex; align-items: flex-end; }
-.pipeline .step { width: 100%; background: var(--ink); border-radius: 2px 2px 0 0; min-height: 3px; }
+.pipeline .track { display: flex; align-items: center; }
+/* each stage is the same patch of nigra: brown neuromelanin neurons, pale where they are lost, glia left behind */
+.patch { width: 100%; height: 70px; overflow: visible; }
+.patch .section { fill: var(--sheet); stroke: var(--rule); stroke-width: 1; }
+.patch .section.empty { fill: none; stroke: var(--soft); stroke-dasharray: 3 3; }
+.patch .soma { fill: var(--dab); stroke: var(--dab-deep); stroke-width: 0.5; }
+.patch .melanin { fill: var(--dab-deep); }
+.patch .nucleus { fill: var(--dab-wash); }
+.patch .glia { fill: var(--hema); opacity: 0.4; }
+.pipeline li.last .patch .soma { stroke: var(--hema); stroke-width: 1.1; }
 .pipeline .pn { margin-top: 10px; font: 500 26px/1.1 var(--mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .pipeline .pl { margin-top: 4px; font-size: 13.5px; line-height: 1.35; color: var(--muted); }
 .pipeline .pl a { color: var(--ink); }
-.pipeline li.last .step { background: var(--hema); }
 .pipeline li.last .pn, .pipeline li.last .pl { color: var(--hema); }
-.pipeline li.next .step { background: repeating-linear-gradient(90deg, var(--soft) 0 4px, transparent 4px 8px); height: 3px; }
 .pipeline li.next .pn { color: var(--soft); }
 .band-note { margin: 4px 0 0; font: 400 12.5px/1.6 var(--mono); color: var(--muted); }
 .kicker { font-size: 16px; color: var(--muted); margin: 0 0 18px; }
