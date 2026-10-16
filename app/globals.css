@@ -128,19 +128,27 @@ main > .wide, main > article > .wide, main > .hero.split, main > .band, main > a
 .hero.split h1 { font-size: clamp(40px, 4.8vw, 62px); }
 .hero.split .lede { margin-bottom: 28px; }
 @media (max-width: 900px) { .hero.split { grid-template-columns: 1fr; gap: 34px; padding-top: 72px; } }
-/* the frontispiece: his book on the desk, his plaque pinned to it, the live bench card lying across its foot */
-.hero-side { display: grid; justify-items: center; }
-/* the page is 1099/720 tall; the card covers its lowest quarter, below the author's name */
-.frontis { position: relative; margin: 0; width: 270px; }
+/* the frontispiece: his book on the desk with his plaque pinned to it, nothing on top of it */
+.frontis { margin: 0; justify-self: center; width: min(300px, 100%); }
+.frontis-art { position: relative; }
 .frontis-page { display: block; width: 100%; height: auto; background: #fff; border-radius: 2px; transform: rotate(-2.4deg); box-shadow: 0 0 0 1px var(--rule), 0 34px 60px -38px rgba(20, 27, 38, 0.55); }
-.frontis-seal { position: absolute; top: -22px; right: -30px; width: 112px; height: 112px; border-radius: 50%; object-fit: cover; object-position: 51% 47%; transform: rotate(7deg) scale(1.001); border: 3px solid var(--sheet); box-shadow: 0 14px 28px -16px rgba(20, 27, 38, 0.6); }
-.hero-side .bench { position: relative; z-index: 1; width: 100%; margin-top: -100px; }
-.frontis-note { margin: 12px 2px 0; justify-self: stretch; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
-.frontis-note a { color: inherit; }
+.frontis-seal { position: absolute; top: -22px; right: -30px; width: 112px; height: 112px; border-radius: 50%; object-fit: cover; object-position: 51% 47%; transform: rotate(7deg); border: 3px solid var(--sheet); box-shadow: 0 14px 28px -16px rgba(20, 27, 38, 0.6); }
+/* the tissue in the margin runs behind this column, so the caption gets a sheet of glass to sit on */
+.frontis figcaption { position: relative; margin: 20px 0 0; padding: 9px 11px; border-radius: 6px; background: color-mix(in srgb, var(--glass) 90%, transparent); font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.frontis figcaption a { color: inherit; }
+/* under the buttons the bench is a strip: gene and step on one line, the four counts in a row */
+.hero-main .bench { margin-top: 38px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 22px; align-items: center; }
+.hero-main .bench-head, .hero-main .bench-stats, .hero-main .bench-foot { grid-column: 1 / -1; }
+.hero-main .bench-gene { margin: 10px 0 12px; font-size: 34px; }
+.hero-main .bench-step { margin: 10px 0 12px; min-height: 0; }
+.hero-main .bench-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 900px) {
-  .frontis { width: 220px; }
+  .frontis { width: 230px; }
   .frontis-seal { width: 88px; height: 88px; top: -16px; right: -22px; }
-  .hero-side .bench { margin-top: -80px; }
+}
+@media (max-width: 560px) {
+  .hero-main .bench { display: block; }
+  .hero-main .bench-stats { grid-template-columns: 1fr 1fr; }
 }
 
 /* the bench: what the agent has on the table right now */

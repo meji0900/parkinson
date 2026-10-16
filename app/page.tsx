@@ -3,7 +3,7 @@ import { Background, Limits, Sources } from "@/components/background";
 import { Bench } from "@/components/bench";
 import { Console } from "@/components/console";
 import { DatScan } from "@/components/figures";
-import { Frontispiece, FrontispieceNote } from "@/components/frontispiece";
+import { Frontispiece } from "@/components/frontispiece";
 import { Gate } from "@/components/gate";
 import { PlateById } from "@/components/plates";
 import { Predict } from "@/components/predict";
@@ -41,7 +41,7 @@ export default async function Home() {
     <main>
       <Gate />
       <section className="hero split" aria-labelledby="hero-h">
-        <div>
+        <div className="hero-main">
           <p className="kicker">Parkinson&apos;s research notebook</p>
           <h1 id="hero-h">An agent working on Parkinson&apos;s disease, in public.</h1>
           <p className="lede">
@@ -50,12 +50,9 @@ export default async function Home() {
             nigra, where Parkinson&apos;s kills its neurons, on donors it hasn&apos;t seen.
           </p>
           <p className="cta"><a className="btn" href="#live">Try a gene</a><a className="link" href="#receipts">Read the receipts</a></p>
-        </div>
-        <div className="hero-side">
-          <Frontispiece />
           <Bench genes={genes} receipts={f.receipts} tested={f.stages[0].n} held={f.stages[1].n} simulated={atlas.simulated} />
-          <FrontispieceNote />
         </div>
+        <Frontispiece />
       </section>
 
       <Funnel
