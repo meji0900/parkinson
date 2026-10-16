@@ -18,7 +18,8 @@ export function Header() {
         {NAV.map((n) => (
           <Link key={n.href} href={n.href} className={KEEP.has(n.href) ? "keep" : n.href.startsWith("/#") ? "" : "opt"}>{n.label}</Link>
         ))}
-        <MoreMenu items={MORE.map((m) => ({ ...m }))} />
+        {/* the pages the bar drops on narrower screens come back at the top of More, only while the bar hides them */}
+        <MoreMenu items={[...NAV.filter((n) => !n.href.startsWith("/#")).map((n) => ({ ...n, dup: true })), ...MORE.map((m) => ({ ...m }))]} />
         <CopyCA ca={BRAND.ca} />
         {BRAND.x && (
           <a className="x" href={`https://x.com/${BRAND.x}`} rel="noopener" target="_blank" aria-label={`${BRAND.name} on X`}>

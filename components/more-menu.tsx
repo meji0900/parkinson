@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-export function MoreMenu({ items }: { items: { href: string; label: string }[] }) {
+export function MoreMenu({ items }: { items: { href: string; label: string; dup?: boolean }[] }) {
   const box = useRef<HTMLDetailsElement>(null);
   const path = usePathname();
   useEffect(() => { if (box.current) box.current.open = false; }, [path]);
@@ -20,7 +20,7 @@ export function MoreMenu({ items }: { items: { href: string; label: string }[] }
       <summary>More</summary>
       <div className="more-list">
         {items.map((i) => (
-          <Link key={i.href} href={i.href} onClick={() => { if (box.current) box.current.open = false; }}>{i.label}</Link>
+          <Link key={i.href} href={i.href} className={i.dup ? "dup" : undefined} onClick={() => { if (box.current) box.current.open = false; }}>{i.label}</Link>
         ))}
       </div>
     </details>
