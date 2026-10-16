@@ -105,7 +105,9 @@ export function openWindows(): OpenWindow[] {
   return all<OpenWindow & { grp: Group }>(
     `select w.registration, e.gene, e.grp, e.axis, e.at as sealed, w.opened, w.closes, w.agent_commit as "commit",
        (select count(*) from forecasts f where f.registration = w.registration and f.kind != 'house') as forecasts
-     from windows w join experiments e on e.registration = w.registration where w.closed is null order by w.closes, e.gene`,
+     from windows w join experiments e on e.registration = w.registration and e.cohort = ?
+     where w.closed is null order by w.closes, e.gene`,
+    cohorts().primary.id, // windows sealed on a replaced atlas still close (and are voided) but are not offered
   ).map(({ grp, ...r }) => ({ ...r, group: grp }));
 }
 
@@ -178,7 +180,7 @@ export function scoreboard() {
   );
   const both = rows.filter((r) => r.people > 0 && r.crowd != null);
   const mean = (xs: number[]) => (xs.length ? r3(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
-  const open = one<{ n: number }>("select count(*) as n from windows where closed is null")?.n ?? 0;
+  const open = one<{ n: number }>("select count(*) as n from windows w join experiments e on e.registration = w.registration and e.cohort = ? where w.closed is null", CURRENT())?.n ?? 0;
   return {
     window_seconds: WINDOW_SECONDS,
     open,
