@@ -124,10 +124,24 @@ main > .wide, main > article > .wide, main > .hero.split, main > .band, main > a
 
 /* ---------------------------------------------------------------- hero */
 .hero { padding: 132px 0 56px; }
-.hero.split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(290px, 0.7fr); gap: 56px; align-items: end; padding: 104px 0 34px; }
+.hero.split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(290px, 0.7fr); gap: 56px; align-items: start; padding: 104px 0 34px; }
 .hero.split h1 { font-size: clamp(40px, 4.8vw, 62px); }
 .hero.split .lede { margin-bottom: 28px; }
 @media (max-width: 900px) { .hero.split { grid-template-columns: 1fr; gap: 34px; padding-top: 72px; } }
+/* the frontispiece: his book on the desk, his plaque pinned to it, the live bench card lying across its foot */
+.hero-side { display: grid; justify-items: center; }
+/* the page is 1099/720 tall; the card covers its lowest quarter, below the author's name */
+.frontis { position: relative; margin: 0; width: 270px; }
+.frontis-page { display: block; width: 100%; height: auto; background: #fff; border-radius: 2px; transform: rotate(-2.4deg); box-shadow: 0 0 0 1px var(--rule), 0 34px 60px -38px rgba(20, 27, 38, 0.55); }
+.frontis-seal { position: absolute; top: -22px; right: -30px; width: 112px; height: 112px; border-radius: 50%; object-fit: cover; object-position: 51% 47%; transform: rotate(7deg) scale(1.001); border: 3px solid var(--sheet); box-shadow: 0 14px 28px -16px rgba(20, 27, 38, 0.6); }
+.hero-side .bench { position: relative; z-index: 1; width: 100%; margin-top: -100px; }
+.frontis-note { margin: 12px 2px 0; justify-self: stretch; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.frontis-note a { color: inherit; }
+@media (max-width: 900px) {
+  .frontis { width: 220px; }
+  .frontis-seal { width: 88px; height: 88px; top: -16px; right: -22px; }
+  .hero-side .bench { margin-top: -80px; }
+}
 
 /* the bench: what the agent has on the table right now */
 .bench { border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); padding: 18px 20px 16px; box-shadow: 0 24px 50px -40px rgba(20, 27, 38, 0.6); }

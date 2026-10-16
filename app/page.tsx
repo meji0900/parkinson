@@ -3,6 +3,7 @@ import { Background, Limits, Sources } from "@/components/background";
 import { Bench } from "@/components/bench";
 import { Console } from "@/components/console";
 import { DatScan } from "@/components/figures";
+import { Frontispiece, FrontispieceNote } from "@/components/frontispiece";
 import { Gate } from "@/components/gate";
 import { PlateById } from "@/components/plates";
 import { Predict } from "@/components/predict";
@@ -50,7 +51,11 @@ export default async function Home() {
           </p>
           <p className="cta"><a className="btn" href="#live">Try a gene</a><a className="link" href="#receipts">Read the receipts</a></p>
         </div>
-        <Bench genes={genes} receipts={f.receipts} tested={f.stages[0].n} held={f.stages[1].n} simulated={atlas.simulated} />
+        <div className="hero-side">
+          <Frontispiece />
+          <Bench genes={genes} receipts={f.receipts} tested={f.stages[0].n} held={f.stages[1].n} simulated={atlas.simulated} />
+          <FrontispieceNote />
+        </div>
       </section>
 
       <Funnel
