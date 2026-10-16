@@ -325,7 +325,20 @@ figure { margin: 0 0 20px; }
 .e-head h3 a { text-decoration: none; }
 .e-score { font: 400 13px var(--mono); color: var(--muted); white-space: nowrap; }
 .e-text { margin: 10px 0 14px; }
-.e-bars { margin: 0 0 12px; font: 400 12.5px/1.55 var(--mono); white-space: pre; overflow-x: auto; }
+/* what each reader found: a row of twelve nigral neurons per score, pigmented up to the score */
+.e-cells { margin: 0 0 14px; display: grid; gap: 4px; font: 400 12.5px/1.5 var(--mono); }
+.e-cells div { display: grid; grid-template-columns: 11ch 168px 4ch; align-items: center; column-gap: 14px; }
+.e-cells dt { color: var(--muted); }
+.e-cells dd { display: contents; }
+.e-cells dd span { text-align: right; font-variant-numeric: tabular-nums; }
+.strip { display: block; width: 168px; height: auto; overflow: visible; }
+.strip .soma { fill: var(--dab); stroke: var(--dab-deep); stroke-width: 0.5; }
+.strip .melanin { fill: var(--dab-deep); }
+.strip .nucleus { fill: var(--dab-wash); }
+.strip .ghost { fill: var(--sheet); stroke: var(--rule); stroke-width: 0.6; }
+.strip .glia { fill: var(--hema); opacity: 0.45; }
+.score-cells { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.score-cells .strip { width: 132px; }
 .e-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; font-size: 14px; color: var(--muted); margin: 0; }
 .e-foot button { background: none; border: 0; padding: 0; font: 500 14px var(--mono); color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .e-foot button:hover { color: var(--dab); }

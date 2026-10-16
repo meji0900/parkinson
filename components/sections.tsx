@@ -48,7 +48,7 @@ function rng(seed: number) {
 /** one fixed patch for every stage: neurons on a jittered hex grid inside the section, in the order they will be lost */
 const NEURONS = (() => {
   const r = rng(1817);
-  const cells: { x: number; y: number; rx: number; ry: number; a: number; gx: number; gy: number; order: number }[] = [];
+  const cells: (Cell & { order: number })[] = [];
   for (let row = 0, y = 7; y < PATCH.h - 5; row++, y += 9.6) {
     for (let x = 7 + (row % 2) * 5.5; x < PATCH.w - 5; x += 11) {
       const jx = x + (r() - 0.5) * 4, jy = y + (r() - 0.5) * 3.6;
@@ -59,6 +59,20 @@ const NEURONS = (() => {
   return cells.sort((a, b) => b.order - a.order);
 })();
 
+type Cell = { x: number; y: number; rx: number; ry: number; a: number; gx: number; gy: number };
+
+/** a pigmented nigral neuron: brown soma, darker neuromelanin granules, a pale nucleus to one side */
+function Neuron({ c }: { c: Cell }) {
+  return (
+    <g transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${c.a.toFixed(0)})`}>
+      <ellipse className="soma" rx={c.rx.toFixed(1)} ry={c.ry.toFixed(1)} />
+      <circle className="melanin" cx={(c.rx * 0.3).toFixed(1)} cy={(-c.ry * 0.25).toFixed(1)} r={(c.ry * 0.38).toFixed(1)} />
+      <circle className="melanin" cx={(c.rx * 0.05).toFixed(1)} cy={(c.ry * 0.4).toFixed(1)} r={(c.ry * 0.3).toFixed(1)} />
+      <circle className="nucleus" cx={(-c.rx * 0.42).toFixed(1)} r={(c.ry * 0.36).toFixed(1)} />
+    </g>
+  );
+}
+
 function NigraPatch({ share, empty = false }: { share: number; empty?: boolean }) {
   const kept = share <= 0 ? 0 : Math.max(1, Math.round(share * NEURONS.length));
   return (
@@ -66,14 +80,36 @@ function NigraPatch({ share, empty = false }: { share: number; empty?: boolean }
       <ellipse className={empty ? "section empty" : "section"} cx={PATCH.cx} cy={PATCH.cy} rx={PATCH.rx} ry={PATCH.ry} />
       {!empty && NEURONS.map((c, i) =>
         i < kept ? (
-          <g key={i} transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${c.a.toFixed(0)})`}>
-            <ellipse className="soma" rx={c.rx.toFixed(1)} ry={c.ry.toFixed(1)} />
-            <circle className="melanin" cx={(c.rx * 0.3).toFixed(1)} cy={(-c.ry * 0.25).toFixed(1)} r={(c.ry * 0.38).toFixed(1)} />
-            <circle className="melanin" cx={(c.rx * 0.05).toFixed(1)} cy={(c.ry * 0.4).toFixed(1)} r={(c.ry * 0.3).toFixed(1)} />
-            <circle className="nucleus" cx={(-c.rx * 0.42).toFixed(1)} r={(c.ry * 0.36).toFixed(1)} />
-          </g>
+          <Neuron key={i} c={c} />
         ) : (
           <circle key={i} className="glia" cx={(c.x + c.gx).toFixed(1)} cy={(c.y + c.gy).toFixed(1)} r="1.3" />
+        ),
+      )}
+    </svg>
+  );
+}
+
+// A score from 0 to 1 as a row of twelve nigral neurons: the pigmented ones are the score, the rest have lost their
+// pigment and left a glial nucleus. The same twelve cells in every row, so the rows line up like a bar chart.
+const STRIP: Cell[] = (() => {
+  const r = rng(1755);
+  return Array.from({ length: 12 }, (_, i) => ({
+    x: 6 + i * 11, y: 6 + (r() - 0.5) * 1.4, rx: 4 + r() * 0.8, ry: 3 + r() * 0.5, a: (r() - 0.5) * 50, gx: (r() - 0.5) * 2.4, gy: (r() - 0.5) * 2,
+  }));
+})();
+
+export function CellStrip({ value }: { value: number }) {
+  const kept = Math.round(Math.max(0, Math.min(1, value)) * STRIP.length);
+  return (
+    <svg className="strip" viewBox="0 0 132 12" aria-hidden>
+      {STRIP.map((c, i) =>
+        i < kept ? (
+          <Neuron key={i} c={c} />
+        ) : (
+          <g key={i}>
+            <ellipse className="ghost" cx={c.x.toFixed(1)} cy={c.y.toFixed(1)} rx={c.rx.toFixed(1)} ry={c.ry.toFixed(1)} transform={`rotate(${c.a.toFixed(0)} ${c.x.toFixed(1)} ${c.y.toFixed(1)})`} />
+            <circle className="glia" cx={(c.x + c.gx).toFixed(1)} cy={(c.y + c.gy).toFixed(1)} r="1.2" />
+          </g>
         ),
       )}
     </svg>
@@ -115,12 +151,6 @@ export function Funnel({ stages, next, links = true, note }: { stages: Stage[]; 
 }
 
 // ---------------------------------------------------------------- the notebook
-const bar = (v: number, w = 22) => {
-  const x = Math.max(0, Math.min(1, v)) * w;
-  const full = Math.floor(x);
-  return ("█".repeat(full) + (x - full >= 0.5 ? "▌" : "")).padEnd(w, " ");
-};
-
 export function NotebookEntries({ entries }: { entries: { symbol: string; name: string; at: string; hypothesis: Hypothesis }[] }) {
   if (!entries.length) return <p className="quiet">No proposals yet. The agent writes one whenever a gene clears a translation score of {THRESHOLD}.</p>;
   return (
@@ -132,9 +162,12 @@ export function NotebookEntries({ entries }: { entries: { symbol: string; name: 
             <span className="e-score">{e.hypothesis.score.toFixed(2)}</span>
           </div>
           <p className="e-text">{e.hypothesis.statement}</p>
-          <pre className="e-bars" aria-label="What each reader found">
-            {FACETS.map((f) => `${FACET_LABEL[f].padEnd(11)} ${bar(e.hypothesis.scores[f] ?? 0)} ${(e.hypothesis.scores[f] ?? 0).toFixed(2)}`).join("\n")}
-          </pre>
+          <dl className="e-cells" aria-label="What each reader found">
+            {FACETS.map((f) => {
+              const v = e.hypothesis.scores[f] ?? 0;
+              return <div key={f}><dt>{FACET_LABEL[f]}</dt><dd><CellStrip value={v} /><span>{v.toFixed(2)}</span></dd></div>;
+            })}
+          </dl>
           <p className="e-foot">
             <span>{e.hypothesis.dissent.length ? `dissent: ${e.hypothesis.dissent.map((f) => FACET_LABEL[f]).join(", ")}` : "no reader dissented"}</span>
             <span>{e.name}</span>

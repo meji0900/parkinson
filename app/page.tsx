@@ -141,6 +141,7 @@ export default async function Home() {
           Every night at 02:30 UTC it runs the 80 genes with the highest association scores for Parkinson&apos;s in Open Targets
           {nb.pool ? <> ({nb.pool.toLocaleString("en")} genes have some evidence)</> : null} and keeps the top 12.
           {nb.night ? <> These are from the run on {nb.night}.</> : <> Until the first night, these are the best cases so far.</>}
+          {" "}Each reader&apos;s score is drawn as twelve nigral neurons: the pigmented ones are the score, the pale ones have lost theirs.
         </p>
         <NotebookEntries entries={nb.entries} />
         <p className="small quiet">{n(nb.investigated, "gene", "genes")} read so far. <Link href="/gene">Every gene on record</Link>.</p>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Proposal } from "@/components/proposal";
 import { ReceiptStrip } from "@/components/receipts";
 import { Replay } from "@/components/replay";
-import { ExperimentRows, Sec, SwarmCases } from "@/components/sections";
+import { CellStrip, ExperimentRows, Sec, SwarmCases } from "@/components/sections";
 import { FACET_LABEL, FACETS, SOURCE } from "@/lib/agent/types";
 import { STUDIES } from "@/lib/atlas/studies";
 import { cleanGene } from "@/lib/server/api";
@@ -46,7 +46,7 @@ export default async function GenePage({ params }: Props) {
                     <tr key={f}>
                       <td>{FACET_LABEL[f]}<br /><span className="small quiet">{SOURCE[f]}</span></td>
                       <td>{r.findings[f].summary}{r.findings[f].error ? <span className="err small"> ({r.findings[f].error})</span> : null}</td>
-                      <td className="r">{r.findings[f].score.toFixed(2)}</td>
+                      <td className="r"><span className="score-cells"><CellStrip value={r.findings[f].score} />{r.findings[f].score.toFixed(2)}</span></td>
                     </tr>
                   ))}
                 </tbody>
