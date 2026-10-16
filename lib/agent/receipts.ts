@@ -3,7 +3,7 @@
 import { all, nowIso, one, tx, run } from "@/lib/server/db";
 import { hashOf } from "@/lib/server/hash";
 
-export type ReceiptKind = "weak" | "unknown" | "source" | "lost" | "atlas";
+export type ReceiptKind = "weak" | "unknown" | "source" | "lost" | "atlas" | "study";
 export type Tried = { reader: string; source?: string; score?: string; level?: string; result?: string };
 
 export type Receipt = {

@@ -1,14 +1,16 @@
 "use client";
 // The slide: the agent's console. It follows the live feed until a visitor types a gene (streamed from
-// /api/run) or a question (/api/ask), then catches up on what it missed.
+// /api/run) or a question (/api/ask), then catches up on what it missed. The frosted end of the slide
+// carries the label a histologist would write on it: the gene on the bench and the region.
 import { useEffect, useRef, useState } from "react";
 import { Terminal, type Ev } from "@/lib/client/terminal";
 import { useLive, type LiveEvent } from "./live";
+import { Mark } from "./mark";
 import { Proposal, type Hyp } from "./proposal";
 
 const NOT_GENES = /^(hi|hey|hello|why|what|who|how|status|help|receipts?|swarm|gm|wen|ser)$/i;
 
-export function Console({ examples }: { examples: string[] }) {
+export function Console({ examples, region = "substantia nigra" }: { examples: string[]; region?: string }) {
   const termRef = useRef<HTMLDivElement>(null);
   const t = useRef<Terminal | null>(null);
   const following = useRef(false);
@@ -24,7 +26,8 @@ export function Console({ examples }: { examples: string[] }) {
   };
   const [gene, setGene] = useState("no gene yet");
   const [mode, setMode] = useState("connecting");
-  const [hyp, setHyp] = useState<Hyp | null>(null);
+  // the proposal keeps the gene it was written for, whatever the slide shows next
+  const [hyp, setHyp] = useState<{ hyp: Hyp; gene: string } | null>(null);
   const [value, setValue] = useState("");
   const live = useLive();
   const statusRef = useRef(live.status);
@@ -38,8 +41,8 @@ export function Console({ examples }: { examples: string[] }) {
   useEffect(() => {
     const term = new Terminal(termRef.current!, {
       onGene: setGene,
-      onHypothesis: (h) => setHyp(h as Hyp),
-      onReceipt: () => window.dispatchEvent(new Event("engram:receipts")),
+      onHypothesis: (h, g) => setHyp({ hyp: h as Hyp, gene: g ?? "" }),
+      onReceipt: () => window.dispatchEvent(new Event("james:receipts")),
     });
     t.current = term;
     termRef.current!.replaceChildren();
@@ -56,6 +59,12 @@ export function Console({ examples }: { examples: string[] }) {
       following.current = true;
       setMode("live");
       benchGene();
+      // a gene sent here from another page (?gene=LRRK2#live) starts as soon as the console is up
+      const asked = new URLSearchParams(window.location.search).get("gene");
+      if (asked) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+        investigate(asked);
+      }
     };
     boot();
     const off = live.subscribe((events) => {
@@ -68,7 +77,7 @@ export function Console({ examples }: { examples: string[] }) {
       }
     });
     const onAsk = (ev: Event) => investigate((ev as CustomEvent<string>).detail);
-    window.addEventListener("engram:investigate", onAsk);
+    window.addEventListener("james:investigate", onAsk);
     return () => {
       // React mounts effects twice in development: stop the first boot before the second starts
       alive = false;
@@ -76,7 +85,7 @@ export function Console({ examples }: { examples: string[] }) {
       following.current = false;
       lastSeq.current = 0;
       off();
-      window.removeEventListener("engram:investigate", onAsk);
+      window.removeEventListener("james:investigate", onAsk);
       ctl.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -167,31 +176,31 @@ export function Console({ examples }: { examples: string[] }) {
   }
 
   return (
-    <div className="slide-wrap" id="live">
+    <div className="console">
       <div className="slide">
-        <div className="frost" aria-hidden>
-          <span>engram</span>
+        <div className="slide-label" aria-hidden>
+          <span>james</span>
           <span className="gene">{gene}</span>
-          <span>temporal cortex</span>
+          <span>{region}</span>
           <span className="mode">{mode}</span>
         </div>
-        <div style={{ minWidth: 0 }}>
-          <div className="term-head"><span>the agent, live</span><span>{mode}</span></div>
-          <div className="term" ref={termRef} role="log" aria-live="off" aria-label="Agent console" tabIndex={0} />
-          <form className="ask" onSubmit={submit}>
-            <label htmlFor="gene-input" className="sr-only">Gene symbol or question</label>
-            <input id="gene-input" value={value} onChange={(e) => setValue(e.target.value)} placeholder="type a gene (TREM2) or ask a question" autoComplete="off" spellCheck={false} maxLength={300} />
+        <div className="slide-glass">
+          <div className="room-bar"><span><Mark size={16} /> the agent, live</span><span>{mode}</span></div>
+          <div className="room-body" ref={termRef} role="log" aria-live="off" aria-label="Agent console" tabIndex={0} />
+          <form className="room-in" onSubmit={submit} autoComplete="off">
+            <label htmlFor="gene-input" className="prompt">$</label>
+            <input id="gene-input" value={value} onChange={(e) => setValue(e.target.value)} placeholder="a gene (LRRK2) or ask: what are you doing?" spellCheck={false} maxLength={300} aria-label="Gene symbol or question" />
             <button type="submit">run</button>
           </form>
         </div>
       </div>
-      <div className="chips">
-        <span>Try</span>
+      <p className="try">
+        <span>examples:</span>
         {examples.map((g) => (
-          <button key={g} type="button" className="chip" onClick={() => investigate(g)}>{g}</button>
+          <button key={g} type="button" onClick={() => investigate(g)}>{g}</button>
         ))}
-      </div>
-      {hyp && <Proposal hyp={hyp} gene={gene} />}
+      </p>
+      {hyp && <Proposal hyp={hyp.hyp} gene={hyp.gene || gene} />}
     </div>
   );
 }

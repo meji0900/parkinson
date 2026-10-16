@@ -10,7 +10,7 @@ import { clientIp, limit } from "@/lib/server/ratelimit";
 // replayed from its stored events instead of hitting the six sources again.
 export async function GET(req: Request) {
   const gene = cleanGene(new URL(req.url).searchParams.get("gene"));
-  if (!gene) return fail("give a gene symbol, e.g. ?gene=TREM2");
+  if (!gene) return fail("give a gene symbol, e.g. ?gene=LRRK2");
   const ip = clientIp(req);
   const enc = new TextEncoder();
   const stored = storedEvents(gene, 12);

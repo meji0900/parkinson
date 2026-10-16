@@ -4,7 +4,7 @@ export type Part = [string, string?];
 export type Ev = { k: string; x: string; fac?: string; gene?: string | null; [extra: string]: unknown };
 export type Hooks = {
   onGene?: (g: string) => void;
-  onHypothesis?: (h: unknown) => void;
+  onHypothesis?: (h: unknown, gene: string | null) => void;
   onReceipt?: () => void;
 };
 
@@ -14,9 +14,9 @@ const num = (x: unknown) => { const v = Number(x || 0); return (Math.abs(v) < 0.
 
 export const BANNER = [
   "",
-  "     genetics ─╮         ╭─ trials",
-  "    cell type ─┼── ◉ ────┼─ literature",
-  "    chemistry ─╯ engram  ╰─ pathways",
+  "     genetics ─╮          ╭─ trials",
+  "    cell type ─┼── ◉ ─────┼─ literature",
+  "    chemistry ─╯  james   ╰─ pathways",
   "",
 ];
 
@@ -56,7 +56,7 @@ export class Terminal {
   }
 
   line = (text: string, id: number, cls = "dim") => this.type([[text, cls]], id, 0);
-  say = (text: string, id: number, cls = "", speed = 9) => this.type([["<engram> ", "tag"], [text, cls]], id, speed);
+  say = (text: string, id: number, cls = "", speed = 9) => this.type([["<james> ", "tag"], [text, cls]], id, speed);
 
   async banner(id: number) {
     for (const l of BANNER) await this.type([[l]], id, 2, "art");
@@ -76,7 +76,7 @@ export class Terminal {
       case "wake": {
         const g = e.gene ?? (e.x.match(/subject: ([^.]+)/) ?? [])[1] ?? "";
         if (g) this.hooks.onGene?.(g);
-        await this.type([["engram@bench:~$ ", "dim"], [`investigate ${g}`, "hi"]], id, 0);
+        await this.type([["james@bench:~$ ", "dim"], [`investigate ${g}`, "hi"]], id, 0);
         return this.say(e.x.split(". ").slice(1).join(". "), id);
       }
       case "src": return this.type([["   " + e.x, "dim"]], id, 4);
@@ -89,7 +89,7 @@ export class Terminal {
         for (const r of rows) await this.type([[r]], id, 3, "art");
         return;
       }
-      case "speak": this.hooks.onHypothesis?.(e.hyp); return this.say(e.x, id, "hi", 12);
+      case "speak": this.hooks.onHypothesis?.(e.hyp, e.gene ?? null); return this.say(e.x, id, "hi", 12);
       case "done": return this.say(e.x, id, "", 10);
       case "receipt": this.hooks.onReceipt?.(); return this.say(e.x, id, "hi", 8);
       case "stop": return this.say(e.x, id, "dim");
@@ -103,6 +103,10 @@ export class Terminal {
       case "register": return this.type([["   ◇ ", "dim"], ["atlas".padEnd(12), "who"], [e.x]], id, 6);
       case "test": return this.type([["   ◇ ", "dim"], ["atlas".padEnd(12), "who"], ["│ " + e.x]], id, 6);
       case "pass": return this.say(e.x, id, "ok", 10);
+      case "study": {
+        if (e.receipt) this.hooks.onReceipt?.();
+        return this.type([["   ◆ ", "dim"], ["study".padEnd(12), "who"], [e.x, e.lead ? "hi" : e.pass ? "ok" : ""]], id, 6);
+      }
       default: return this.type([[e.x ?? "", "dim"]], id);
     }
   }

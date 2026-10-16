@@ -157,3 +157,21 @@ export function fisherCI(r: number, n: number): [number, number] {
 
 export const fmtP = (p: number) => (p < 0.001 ? p.toExponential(1) : p.toFixed(p < 0.01 ? 4 : 3));
 export const fmtE = (e: number) => `${e >= 0 ? "+" : ""}${e.toFixed(2)}`;
+
+/** Two-sided Fisher exact test for the 2x2 table [[a, b], [c, d]]. */
+export function fisherExact(a: number, b: number, c: number, d: number): number {
+  const lf = (n: number) => lgammaInt(n + 1);
+  const n = a + b + c + d, r1 = a + b, c1 = a + c;
+  const prob = (x: number) => Math.exp(lf(r1) + lf(n - r1) + lf(c1) + lf(n - c1) - lf(n) - lf(x) - lf(r1 - x) - lf(c1 - x) - lf(n - r1 - c1 + x));
+  const lo = Math.max(0, r1 + c1 - n), hi = Math.min(r1, c1);
+  const p0 = prob(a);
+  let p = 0;
+  for (let x = lo; x <= hi; x++) { const px = prob(x); if (px <= p0 * (1 + 1e-7)) p += px; }
+  return Math.min(1, p);
+}
+const lgCache: number[] = [0, 0];
+function lgammaInt(n: number): number {
+  // log((n-1)!) for whole n >= 1
+  for (let k = lgCache.length; k <= n; k++) lgCache[k] = lgCache[k - 1] + Math.log(k - 1);
+  return lgCache[n];
+}

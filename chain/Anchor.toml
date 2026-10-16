@@ -3,10 +3,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-engram_registry = "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn"
+james_registry = "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb"
 
 [programs.devnet]
-engram_registry = "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn"
+james_registry = "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb"
 
 [provider]
 cluster = "devnet"

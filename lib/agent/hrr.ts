@@ -24,7 +24,7 @@ const memo = new Map<string, Float64Array>();
 function vec(name: string): Float64Array {
   let v = memo.get(name);
   if (v) return v;
-  const r = seeded("engram:" + name);
+  const r = seeded("james:" + name);
   v = new Float64Array(D);
   const sd = 1 / Math.sqrt(D);
   for (let i = 0; i < D; i += 2) {

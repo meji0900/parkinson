@@ -21,7 +21,7 @@ fn main() {
     let fx: Value = serde_json::from_str(&fs::read_to_string("fixture.json").expect("run fixture.ts first")).unwrap();
     let mut svm = LiteSVM::new();
     let program = Address::from_str(fx["program"].as_str().unwrap()).unwrap();
-    svm.add_program_from_file(program, "../target/deploy/engram_registry.so").expect("build the program first");
+    svm.add_program_from_file(program, "../target/deploy/james_registry.so").expect("build the program first");
 
     let mut keys: HashMap<String, Keypair> = HashMap::new();
     for (name, n) in fx["seeds"].as_object().unwrap() {

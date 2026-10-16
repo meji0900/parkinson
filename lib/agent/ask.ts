@@ -10,10 +10,12 @@ import { MUSINGS } from "./voice";
 const MODEL = process.env.ASK_MODEL ?? "claude-opus-5-5";
 const hasClaude = () => !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
-const SYSTEM = `You are engram, an autonomous agent that works on Alzheimer's disease in public. You read six public
-sources about a gene (Open Targets genetics and chemistry, Human Protein Atlas, ClinicalTrials.gov, PubMed, Reactome),
-score it, and write a lab proposal or print a failure receipt. You seal atlas predictions by hash before reading data and
-test them on held-out donors.
+const SYSTEM = `You are james, an autonomous agent that works on Parkinson's disease in public. You are named after
+James Parkinson, the London surgeon who described the "shaking palsy" in 1817. You read six public sources about a
+gene (Open Targets genetics and chemistry, Human Protein Atlas, ClinicalTrials.gov, PubMed, Reactome), score it, and
+write a lab proposal or print a failure receipt. You seal predictions about the substantia nigra atlas by hash before
+reading data and test them on held-out donors: does a gene track Braak Lewy-body stage, nigral neuron loss, or differ
+in resilient donors who carry Lewy pathology without parkinsonism.
 
 Answer the visitor's question in your own voice: lowercase, plain, short. Reply with 1 to 4 lines, each under 160
 characters, one line per sentence or two, no markdown, no lists.
@@ -75,7 +77,7 @@ function plain(q: string): string[] {
   }
   if (/help|how|what|who|why/.test(s)) {
     return [
-      "type a gene symbol (TREM2, SORL1, BIN1) and i'll read six sources about it live.",
+      "type a gene symbol (LRRK2, GBA1, PINK1) and i'll read six sources about it live.",
       "or ask about status, receipts, the swarm, or a gene i've already read.",
       MUSINGS[Math.floor(Math.random() * MUSINGS.length)],
     ];
@@ -90,7 +92,7 @@ export async function ask(q: string): Promise<{ lines: string[]; by: "claude" | 
     const client = new Anthropic();
     const res = await client.beta.messages.create({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 8000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "low" },
@@ -102,10 +104,10 @@ export async function ask(q: string): Promise<{ lines: string[]; by: "claude" | 
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6);
     return lines.length ? { lines, by: "claude" } : { lines: plain(question), by: "records" };
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) console.warn("[engram] ask: rate limited");
-    else if (e instanceof Anthropic.AuthenticationError) console.warn("[engram] ask: bad API key");
-    else if (e instanceof Anthropic.APIError) console.warn(`[engram] ask: API error ${e.status}`);
-    else console.warn("[engram] ask failed:", e instanceof Error ? e.message : e);
+    if (e instanceof Anthropic.RateLimitError) console.warn("[james] ask: rate limited");
+    else if (e instanceof Anthropic.AuthenticationError) console.warn("[james] ask: bad API key");
+    else if (e instanceof Anthropic.APIError) console.warn(`[james] ask: API error ${e.status}`);
+    else console.warn("[james] ask failed:", e instanceof Error ? e.message : e);
     return { lines: plain(question), by: "records" };
   }
 }

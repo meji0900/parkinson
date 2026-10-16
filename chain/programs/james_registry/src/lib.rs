@@ -1,4 +1,4 @@
-//! Engram registry: the on-chain half of the research notebook.
+//! james registry: the on-chain half of the Parkinson's research notebook.
 //!
 //! * A prediction (gene, cell group, outcome) is registered by hash before any data is read. The
 //!   PDA is seeded by that hash, so each prediction can be registered exactly once, and the block
@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 
-declare_id!("7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn");
+declare_id!("CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb");
 
 pub const GENE_LEN: usize = 16;
 pub const TOKEN_DECIMALS: u8 = 6;
@@ -20,7 +20,7 @@ pub const STATUS_REPLICATED: u8 = 1;
 pub const STATUS_FAILED: u8 = 2;
 
 #[program]
-pub mod engram_registry {
+pub mod james_registry {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, reward_amount: u64, faucet_amount: u64) -> Result<()> {

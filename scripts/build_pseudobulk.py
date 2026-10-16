@@ -1,26 +1,46 @@
-"""Build the atlas files engram tests predictions on, from a SEA-AD single-nucleus h5ad.
+"""Build the atlas files james tests predictions on, from a substantia nigra single-nucleus h5ad.
 
 Output (read by lib/atlas/cohort.ts):
-  <out>/meta.json             donors with age, sex, PMI, Braak, Thal, CERAD, dementia and cell-group shares
+  <out>/meta.json             donors with age, sex, PMI, Braak Lewy-body stage, nigral neuron loss, parkinsonism and
+                              cell-group shares
   <out>/<group>.tsv           one row per gene, one column per donor: mean log-normalized expression
 
 Usage (Python 3.10+, `pip install anndata numpy pandas`):
-  python scripts/build_pseudobulk.py SEAAD_MTG_RNAseq_final-nuclei.h5ad data/atlas/sea-ad-mtg --id sea-ad-mtg \
-      --label "SEA-AD middle temporal gyrus" --region "middle temporal gyrus"
+  python scripts/build_pseudobulk.py nigra.h5ad data/atlas/pd-snpc --id pd-snpc \
+      --label "substantia nigra (your dataset)" --region "substantia nigra pars compacta" \
+      --col-donor donor_id --col-celltype cell_type --col-braak braak_lb --col-dx diagnosis
 
-The obs column names below match the SEA-AD release we built against; check yours with
-`anndata.read_h5ad(path, backed='r').obs.columns` and pass --col-* overrides if they differ.
+Datasets that fit: Kamath et al. 2022 (Broad Single Cell Portal SCP1768, GEO GSE178265), Martirosyan et al. 2024
+(GSE243639), Wang et al. 2024 (GSE184950), and the harmonised ASAP CRN post-mortem collection. Each names its columns
+differently: list yours with `anndata.read_h5ad(path, backed="r").obs.columns` and pass --col-* overrides. Cell types are
+matched to the eight groups by the regular expressions below (case-insensitive); --groups takes a JSON object to replace
+them. A second cohort (for the confirmation step and the swarm's follow-ups) is built the same way into another folder,
+named by ATLAS_SECOND.
+
+Expression should be log-normalized (log1p of counts per 10k, or similar). Donors are rows of the metadata; the Braak
+Lewy-body stage is required, nigral loss is optional (filled with 0 and reported if absent, which leaves that outcome
+untestable), and parkinsonism is read from the diagnosis column.
 """
-import argparse, json, os, re
+import argparse
+import json
+import os
+import re
+
+import anndata as ad
 import numpy as np
 import pandas as pd
-import anndata as ad
 
 GROUPS = {
-    "microglia": ["Microglia-PVM"], "astrocytes": ["Astrocyte"], "oligodendrocytes": ["Oligodendrocyte"], "OPCs": ["OPC"],
-    "endothelial": ["Endothelial"], "VLMC": ["VLMC"],
+    "dopamine neurons": r"dopamin|\bDA\b|\bDaN|SOX6|CALB1|TH\+|^DA[_-]",
+    "GABA neurons": r"gaba|inhib",
+    "glutamate neurons": r"glut|excit|SLC17A6",
+    "microglia": r"microgl|macroph|\bMG\b",
+    "astrocytes": r"astro",
+    "oligodendrocytes": r"^oligo(?!.*precursor)|^ODC|oligodendrocyte$",
+    "OPCs": r"\bOPC|precursor",
+    "endothelial": r"endo|vascular|pericyte",
 }
-CLASS_GROUPS = {"excitatory neurons": "Neuronal: Glutamatergic", "inhibitory neurons": "Neuronal: GABAergic"}
+PD = re.compile(r"parkinson|\bPD\b|\bPDD\b|\bDLB\b|\bLBD\b|lewy", re.I)
 
 
 def num(x, default=np.nan):
@@ -28,7 +48,7 @@ def num(x, default=np.nan):
     return float(m.group()) if m else default
 
 
-def stage(x):  # "Braak V" -> 5, "Thal 3" -> 3
+def stage(x):  # "Braak LB IV" -> 4, "stage 3" -> 3, "0" -> 0
     s = str(x).strip()
     roman = {"0": 0, "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}
     tail = s.split()[-1] if s else ""
@@ -39,19 +59,30 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("h5ad"); p.add_argument("out")
     p.add_argument("--id", required=True); p.add_argument("--label", required=True); p.add_argument("--region", required=True)
-    for c, d in [("donor", "Donor ID"), ("cls", "Class"), ("subclass", "Subclass"), ("braak", "Braak"), ("thal", "Thal"),
-                 ("cerad", "CERAD score"), ("cog", "Cognitive Status"), ("age", "Age at Death"), ("sex", "Sex"), ("pmi", "PMI")]:
+    p.add_argument("--groups", help="JSON object: group name -> regular expression on the cell-type column")
+    for c, d in [("donor", "donor_id"), ("celltype", "cell_type"), ("braak", "braak_lb"), ("nigra", "nigral_loss"), ("dx", "diagnosis"),
+                 ("age", "age"), ("sex", "sex"), ("pmi", "pmi")]:
         p.add_argument(f"--col-{c}", default=d)
     a = p.parse_args()
     os.makedirs(a.out, exist_ok=True)
+    groups = json.loads(a.groups) if a.groups else GROUPS
 
     adata = ad.read_h5ad(a.h5ad, backed="r")
     obs = adata.obs
+    for need in (a.col_donor, a.col_celltype, a.col_braak, a.col_dx):
+        if need not in obs.columns:
+            raise SystemExit(f"column {need!r} is not in obs; the columns are: {list(obs.columns)}")
+    if a.col_nigra not in obs.columns:
+        print(f"note: no {a.col_nigra!r} column; nigral loss is set to 0 and the 'nigra' outcome cannot be tested")
+
+    cell = obs[a.col_celltype].astype(str)
     group = pd.Series(pd.NA, index=obs.index, dtype="object")
-    for g, subs in GROUPS.items():
-        group[obs[a.col_subclass].isin(subs)] = g
-    for g, cls in CLASS_GROUPS.items():
-        group[obs[a.col_cls] == cls] = g
+    for g, pattern in groups.items():
+        hit = cell.str.contains(pattern, flags=re.I, regex=True) & group.isna()
+        group[hit] = g
+    unmatched = cell[group.isna()].value_counts().head(8)
+    if len(unmatched):
+        print("cell types not matched to any group (top 8):", dict(unmatched))
     donors = sorted(obs[a.col_donor].astype(str).unique())
     di = {d: i for i, d in enumerate(donors)}
 
@@ -61,16 +92,23 @@ def main():
         counts = group[obs[a.col_donor].astype(str) == d].value_counts()
         total = max(1, counts.sum())
         meta.append({
-            "id": d, "age": num(o[a.col_age], 90), "female": 1 if str(o[a.col_sex]).lower().startswith("f") else 0,
-            "pmi": num(o[a.col_pmi], 6), "braak": stage(o[a.col_braak]), "thal": stage(o[a.col_thal]), "cerad": num(o[a.col_cerad], 0),
-            "dementia": 1 if str(o[a.col_cog]).strip().lower() == "dementia" else 0,
-            "share": {g: float(counts.get(g, 0)) / total for g in list(GROUPS) + list(CLASS_GROUPS)},
+            "id": d,
+            "age": num(o.get(a.col_age, np.nan), 80),
+            "female": 1 if str(o.get(a.col_sex, "")).lower().startswith("f") else 0,
+            "pmi": num(o.get(a.col_pmi, np.nan), 8),
+            "braak": stage(o[a.col_braak]),
+            "nigra": num(o[a.col_nigra], 0) if a.col_nigra in obs.columns else 0,
+            "parkinsonism": 1 if PD.search(str(o[a.col_dx])) else 0,
+            "share": {g: float(counts.get(g, 0)) / total for g in groups},
         })
+    bad = [m["id"] for m in meta if np.isnan(m["braak"])]
+    if bad:
+        raise SystemExit(f"{len(bad)} donors have no readable Braak Lewy-body stage, e.g. {bad[:5]}; fix the column or drop them")
     genes = list(adata.var_names)
     with open(os.path.join(a.out, "meta.json"), "w") as f:
         json.dump({"id": a.id, "label": a.label, "region": a.region, "cells": int(adata.n_obs), "genes": len(genes), "donors": meta}, f)
 
-    for g in list(GROUPS) + list(CLASS_GROUPS):
+    for g in groups:
         sums = np.zeros((len(donors), len(genes)), dtype=np.float64)
         n = np.zeros(len(donors))
         rows = np.where(group.values == g)[0]

@@ -1,4 +1,5 @@
-// Procedural neurons, drawn the way a Golgi stain shows them: a soma, branching dendrites, one axon.
+// Procedural neurons, drawn the way a Golgi stain shows them: a soma, branching dendrites, one axon. Most are
+// nigral dopamine neurons: large multipolar cells with a few long, sparsely branching dendrites.
 // Every vertex carries its distance along the tree from the soma (aDist, 0 to 1), which the shaders use
 // for travelling action potentials and for dendrites dying back from the tips as the tissue gets sick.
 import * as THREE from "three";
@@ -49,7 +50,7 @@ function grow(r: Rng, pyramidal: boolean) {
     tips.push({ p: p.clone(), dist: d, kind });
   };
 
-  const somaR = pyramidal ? 0.075 : 0.065;
+  const somaR = pyramidal ? 0.075 : 0.11;
   const from = (dir: THREE.Vector3) => dir.clone().normalize().multiplyScalar(somaR * 0.8);
   if (pyramidal) {
     const up = new THREE.Vector3((r() - 0.5) * 0.3, 1, (r() - 0.5) * 0.3);
@@ -61,10 +62,14 @@ function grow(r: Rng, pyramidal: boolean) {
       branch(from(dir), dir, 0.32 + r() * 0.26, 0.013, 1, 0, 0);
     }
   } else {
-    const n = 5 + Math.floor(r() * 4);
+    // a nigral dopamine neuron: three to five thick primary dendrites, long and sparsely branched, some running
+    // ventrally into the pars reticulata
+    const n = 3 + Math.floor(r() * 3);
     for (let i = 0; i < n; i++) {
-      const dir = new THREE.Vector3(r() - 0.5, r() - 0.5, (r() - 0.5) * 0.7);
-      branch(from(dir), dir, 0.34 + r() * 0.38, 0.015, 0, 0, 0);
+      const a = (i / n) * Math.PI * 2 + r() * 0.8;
+      const ventral = r() < 0.4;
+      const dir = new THREE.Vector3(Math.cos(a), ventral ? -0.6 - r() * 0.6 : Math.sin(a) * 0.9, (r() - 0.5) * 0.6);
+      branch(from(dir), dir, 0.62 + r() * 0.62, 0.026, 1, 0, 0);
     }
   }
   const ax = new THREE.Vector3((r() - 0.5) * 0.5, -1, (r() - 0.5) * 0.4);
@@ -122,7 +127,7 @@ function tubes(segs: Seg[], dMax: number, aMax: number): THREE.BufferGeometry {
 
 export function makeShape(seed: number): Shape {
   const r = rng(seed);
-  const pyramidal = r() < 0.6;
+  const pyramidal = false; // the nigra has no pyramidal cells
   const { segs, tips, somaR } = grow(r, pyramidal);
   let dMax = 0.001, aMax = 0.001;
   for (const s of segs) for (const d of s.dist) s.kind ? (aMax = Math.max(aMax, d)) : (dMax = Math.max(dMax, d));
@@ -130,6 +135,7 @@ export function makeShape(seed: number): Shape {
   tg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(tips.flatMap((x) => [x.p.x, x.p.y, x.p.z])), 3));
   tg.setAttribute("aDist", new THREE.BufferAttribute(new Float32Array(tips.map((x) => Math.min(1, x.dist / (x.kind ? aMax : dMax)))), 1));
   tg.setAttribute("aKind", new THREE.BufferAttribute(new Float32Array(tips.map((x) => x.kind)), 1));
-  const soma = pyramidal ? new THREE.Vector3(somaR * 0.9, somaR * 1.45, somaR * 0.9) : new THREE.Vector3(somaR, somaR, somaR);
+  // large fusiform or polygonal somata, stretched along one axis
+  const soma = pyramidal ? new THREE.Vector3(somaR * 0.9, somaR * 1.45, somaR * 0.9) : new THREE.Vector3(somaR * (1.15 + r() * 0.3), somaR * (0.8 + r() * 0.15), somaR * 0.9);
   return { tubes: tubes(segs, dMax, aMax), tips: tg, soma, pyramidal };
 }

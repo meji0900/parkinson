@@ -1,34 +1,41 @@
 // The atlas the predictions are tested on.
 //
 // Real data: put a donor table and per-cell-group pseudobulk matrices under data/atlas/<cohort>/
-// (scripts/build_pseudobulk.py builds them from the SEA-AD h5ad files) and they are used.
-// Without them the agent runs on a SIMULATED cohort shaped like SEA-AD (84 donors, the same cell
-// groups and staging). Every record made on it is labelled simulated; none of it is a finding.
+// (scripts/build_pseudobulk.py builds them from a substantia nigra single-nucleus h5ad) and they are used.
+// Without them the agent runs on a SIMULATED cohort shaped like the published midbrain atlases: the same
+// cell groups, Lewy-body staging, nigral neuron loss and clinical parkinsonism. Every record made on it is
+// labelled simulated; none of it is a finding.
 import fs from "node:fs";
 import path from "node:path";
 
 export const GROUPS = [
-  "microglia", "astrocytes", "oligodendrocytes", "OPCs", "endothelial", "VLMC", "excitatory neurons", "inhibitory neurons",
+  "dopamine neurons", "GABA neurons", "glutamate neurons", "microglia", "astrocytes", "oligodendrocytes", "OPCs", "endothelial",
 ] as const;
 export type Group = (typeof GROUPS)[number];
 
-export const AXES = ["braak", "thal", "resilience"] as const;
+export const AXES = ["braak", "nigra", "resilience"] as const;
 export type Axis = (typeof AXES)[number];
 export const AXIS_LABEL: Record<Axis, string> = {
-  braak: "tracks Braak (tau) stage",
-  thal: "tracks Thal (amyloid) phase",
-  resilience: "differs in resilient donors (high pathology, no dementia)",
+  braak: "tracks Braak Lewy-body stage",
+  nigra: "tracks nigral neuron loss",
+  resilience: "differs in resilient donors (Lewy pathology, no parkinsonism)",
 };
+export const AXIS_SHORT: Record<Axis, string> = { braak: "Lewy stage", nigra: "nigral loss", resilience: "resilience" };
+
+/** donors at or above this Braak Lewy-body stage count as carrying heavy pathology for the resilience test */
+export const RESILIENCE_STAGE = 3;
 
 export type Donor = {
   id: string;
   age: number;
   female: number;
   pmi: number;
+  /** Braak Lewy-body stage, 0 to 6 */
   braak: number;
-  thal: number;
-  cerad: number;
-  dementia: number;
+  /** semi-quantitative loss of pigmented neurons in the substantia nigra, 0 (none) to 3 (severe) */
+  nigra: number;
+  /** clinical parkinsonism in life (a PD or PD-dementia diagnosis) */
+  parkinsonism: number;
   share: Record<Group, number>;
 };
 
@@ -42,6 +49,8 @@ export type Cohort = {
   genes: number | null;
   /** donor-ordered expression of a gene in a group, or null when the group does not measure it */
   expr(gene: string, group: Group): number[] | null;
+  /** genes to draw matched random sets from, for the studies */
+  background(group: Group): string[];
 };
 
 // ---------------------------------------------------------------- seeded randomness
@@ -73,56 +82,70 @@ function simulateDonors(seed: string, n: number): { donors: Donor[]; latent: Lat
   const r = seeded(seed);
   const donors: Donor[] = [], latent: Latent[] = [];
   for (let i = 0; i < n; i++) {
-    const L = clamp(r() ** 0.8, 0, 1); // pathology burden
+    const L = clamp(r() ** 0.8, 0, 1); // Lewy burden
     const R = gauss(r); // unmeasured resilience
     const braak = Math.round(clamp(L * 6 + gauss(r) * 0.6, 0, 6));
-    const thal = Math.round(clamp(L * 5 + gauss(r) * 0.8, 0, 5));
-    const cerad = Math.round(clamp(L * 3 + gauss(r) * 0.5, 0, 3));
-    const dementia = r() < 1 / (1 + Math.exp(-(-2.4 + 5.6 * L - 0.9 * R))) ? 1 : 0;
+    // neurons are lost after Lewy pathology reaches the nigra, so loss lags the stage
+    const nigra = Math.round(clamp(3 * L ** 1.4 + gauss(r) * 0.45, 0, 3));
+    const parkinsonism = r() < 1 / (1 + Math.exp(-(-2.6 + 6 * L - 1.0 * R))) ? 1 : 0;
     const raw: Record<Group, number> = {
-      "excitatory neurons": clamp(0.34 - 0.09 * L + gauss(r) * 0.03, 0.12, 0.5),
-      "inhibitory neurons": clamp(0.13 - 0.02 * L + gauss(r) * 0.015, 0.05, 0.2),
-      microglia: clamp(0.05 + 0.025 * L + gauss(r) * 0.01, 0.02, 0.12),
-      astrocytes: clamp(0.1 + 0.03 * L + gauss(r) * 0.015, 0.04, 0.2),
-      oligodendrocytes: clamp(0.27 + gauss(r) * 0.04, 0.1, 0.45),
-      OPCs: clamp(0.06 + gauss(r) * 0.01, 0.02, 0.1),
-      endothelial: clamp(0.02 + gauss(r) * 0.005, 0.005, 0.05),
-      VLMC: clamp(0.01 + gauss(r) * 0.003, 0.002, 0.03),
+      // the pigmented neurons are the ones that die: their share falls by about two thirds at the end
+      "dopamine neurons": clamp(0.05 - 0.034 * L + gauss(r) * 0.007, 0.004, 0.09),
+      "GABA neurons": clamp(0.045 - 0.006 * L + gauss(r) * 0.006, 0.015, 0.08),
+      "glutamate neurons": clamp(0.03 - 0.004 * L + gauss(r) * 0.005, 0.01, 0.06),
+      microglia: clamp(0.07 + 0.03 * L + gauss(r) * 0.012, 0.03, 0.15),
+      astrocytes: clamp(0.11 + 0.025 * L + gauss(r) * 0.015, 0.05, 0.2),
+      oligodendrocytes: clamp(0.56 + gauss(r) * 0.05, 0.35, 0.72),
+      OPCs: clamp(0.07 + gauss(r) * 0.01, 0.03, 0.11),
+      endothelial: clamp(0.03 + gauss(r) * 0.006, 0.01, 0.06),
     };
     const sum = Object.values(raw).reduce((a, b) => a + b, 0);
     const share = Object.fromEntries(GROUPS.map((g) => [g, raw[g] / sum])) as Record<Group, number>;
     donors.push({
       id: `D${String(i + 1).padStart(3, "0")}`,
-      age: Math.round(clamp(78 + r() * 22, 65, 102)),
-      female: r() < 0.56 ? 1 : 0,
-      pmi: Math.round((3 + r() * 9) * 10) / 10,
-      braak, thal, cerad, dementia, share,
+      age: Math.round(clamp(76 + r() * 20 + gauss(r) * 3, 55, 99)),
+      female: r() < 0.38 ? 1 : 0, // Parkinson's is more common in men
+      pmi: Math.round((3 + r() * 14) * 10) / 10,
+      braak, nigra, parkinsonism, share,
     });
     latent.push({ L, R });
   }
   return { donors, latent };
 }
 
-type GeneParams = { measured: boolean; mu: number; beta: number; gamma: number; comp: number; age: number; sex: number; amyloid: number };
+type GeneParams = { measured: boolean; mu: number; beta: number; gamma: number; comp: number; age: number; sex: number; loss: number };
+
+// Genes that every nigral single-nucleus dataset detects in dopamine neurons and glia: the Parkinson's genes and
+// the dopamine identity genes. The simulation never drops them, so it cannot report SNCA as unmeasured.
+const ALWAYS_MEASURED = new Set([
+  "SNCA", "LRRK2", "GBA1", "PRKN", "PINK1", "PARK7", "VPS35", "MAPT", "GCH1", "TMEM175", "CTSB", "GALC", "SCARB2", "ATP13A2",
+  "VPS13C", "GPNMB", "RAB29", "RAB32", "SYNJ1", "DNAJC6", "SH3GL2", "FBXO7", "CHCHD2", "VDAC1", "MFN2", "OPA1", "TOMM20", "USP30",
+  "TH", "SLC6A3", "SLC18A2", "DDC", "KCNJ6", "ALDH1A1", "NR4A2", "FOXA2", "LMX1B", "SOX6", "AGTR1", "RET", "SV2C", "SYT11", "RAB3B",
+  "CPLX1", "SNAP25", "STX1A", "HLA-DRA", "HLA-DRB1", "CD74", "LGALS3", "TREM2", "APOE", "SPP1", "CD68", "CTSD", "RIT2", "PLA2G6",
+]);
 
 function geneParams(gene: string, group: Group): GeneParams {
   const r = seeded(`params:${gene}:${group}`);
+  const da = group === "dopamine neurons";
   const neuron = group.includes("neurons");
-  const measured = r() < (neuron ? 0.93 : 0.85);
-  const beta = r() < 0.08 ? (r() < 0.5 ? -1 : 1) * (0.25 + r() * 0.4) : 0; // true tau-stage effect
+  // dopamine neurons are a few percent of nigral nuclei, so more genes drop out there
+  const measured = r() < (da ? 0.86 : neuron ? 0.9 : 0.85) || ALWAYS_MEASURED.has(gene.toUpperCase());
+  const beta = r() < 0.08 ? (r() < 0.5 ? -1 : 1) * (0.25 + r() * 0.4) : 0; // true Lewy-stage effect
   const gamma = r() < 0.05 ? (r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.5) : 0; // true resilience effect
-  const comp = neuron && r() < 0.12 ? (r() < 0.5 ? -1 : 1) * (0.3 + r() * 0.5) : 0; // cell-mix artefact
-  const amyloid = r() < 0.04 ? (r() < 0.5 ? -1 : 1) * (0.25 + r() * 0.3) : 0;
-  return { measured, mu: 1 + r() * 3, beta, gamma, comp, age: gauss(r) * 0.1, sex: gauss(r) * 0.1, amyloid };
+  const comp = neuron && r() < (da ? 0.2 : 0.12) ? (r() < 0.5 ? -1 : 1) * (0.3 + r() * 0.5) : 0; // cell-mix artefact
+  const loss = r() < 0.04 ? (r() < 0.5 ? -1 : 1) * (0.25 + r() * 0.3) : 0; // tracks neuron loss beyond the stage
+  return { measured, mu: 1 + r() * 3, beta, gamma, comp, age: gauss(r) * 0.1, sex: gauss(r) * 0.1, loss };
 }
+
+const SIM_BACKGROUND = Array.from({ length: 1600 }, (_, i) => `SIMG${String(i + 1).padStart(4, "0")}`);
 
 function simulatedCohort(id: string, label: string, region: string, seed: string, n: number, attenuation: number): Cohort {
   const { donors, latent } = simulateDonors(seed, n);
   const zL = z(latent.map((l) => l.L)), zR = latent.map((l) => l.R), zAge = z(donors.map((d) => d.age));
-  const zThalResid = z(donors.map((d, i) => d.thal - latent[i].L * 5));
+  const zLossResid = z(donors.map((d, i) => d.nigra - 3 * latent[i].L ** 1.4));
   const cache = new Map<string, number[] | null>();
   return {
-    id, label, region, simulated: true, donors, cells: n * 14000, genes: null,
+    id, label, region, simulated: true, donors, cells: n * 9000, genes: null,
     expr(gene, group) {
       const key = gene + "|" + group;
       if (cache.has(key)) return cache.get(key)!;
@@ -131,12 +154,13 @@ function simulatedCohort(id: string, label: string, region: string, seed: string
       const zShare = z(donors.map((d) => d.share[group]));
       const noise = seeded(`noise:${seed}:${gene}:${group}`);
       const v = donors.map((d, i) =>
-        p.mu + attenuation * (p.beta * zL[i] + p.gamma * zR[i] + p.amyloid * zThalResid[i]) + p.comp * zShare[i] +
+        p.mu + attenuation * (p.beta * zL[i] + p.gamma * zR[i] + p.loss * zLossResid[i]) + p.comp * zShare[i] +
         p.age * zAge[i] + p.sex * d.female + gauss(noise) * 0.9);
-      if (cache.size > 4000) cache.clear();
+      if (cache.size > 6000) cache.clear();
       cache.set(key, v);
       return v;
     },
+    background: () => SIM_BACKGROUND,
   };
 }
 
@@ -172,23 +196,26 @@ function diskCohort(dir: string): Cohort | null {
       const v = load(group)?.get(gene.toUpperCase());
       return v && !v.some(Number.isNaN) ? Array.from(v) : null;
     },
+    background(group) {
+      return [...(load(group)?.keys() ?? [])];
+    },
   };
 }
 
 // ---------------------------------------------------------------- the two cohorts in use
-const g = globalThis as unknown as { __engramCohorts?: { primary: Cohort; second: Cohort } };
+const g = globalThis as unknown as { __jamesCohorts?: { primary: Cohort; second: Cohort } };
 
 export function cohorts(): { primary: Cohort; second: Cohort } {
-  if (g.__engramCohorts) return g.__engramCohorts;
+  if (g.__jamesCohorts) return g.__jamesCohorts;
   const root = process.env.ATLAS_DIR ?? path.join(process.cwd(), "data", "atlas");
   const primary =
-    diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_PRIMARY ?? "sea-ad-mtg")) ??
-    simulatedCohort("sim-mtg-v1", "simulated temporal-cortex cohort (SEA-AD-shaped, 84 donors)", "middle temporal gyrus", "engram-sim-mtg-v1", 84, 1);
+    diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_PRIMARY ?? "pd-snpc")) ??
+    simulatedCohort("sim-snpc-v2", "simulated substantia nigra cohort (84 donors)", "substantia nigra pars compacta", "james-sim-snpc-v1", 84, 1);
   const second =
-    diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_SECOND ?? "sea-ad-pfc")) ??
-    simulatedCohort("sim-pfc-v1", "simulated prefrontal cohort (80 donors)", "prefrontal cortex", "engram-sim-pfc-v1", 80, 0.8);
-  g.__engramCohorts = { primary, second };
-  return g.__engramCohorts;
+    diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_SECOND ?? "pd-vta")) ??
+    simulatedCohort("sim-vta-v2", "simulated ventral tegmental area cohort (80 donors)", "ventral tegmental area", "james-sim-vta-v1", 80, 0.75);
+  g.__jamesCohorts = { primary, second };
+  return g.__jamesCohorts;
 }
 
 export const isGroup = (s: string): s is Group => (GROUPS as readonly string[]).includes(s);

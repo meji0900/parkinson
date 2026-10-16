@@ -1,5 +1,5 @@
 {
-  "name": "engram",
+  "name": "james",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "chain:build": "cd chain && cargo-build-sbf --manifest-path programs/engram_registry/Cargo.toml --sbf-out-dir target/deploy",
-    "chain:deploy": "solana program deploy chain/target/deploy/engram_registry.so --program-id .keys/engram_registry-keypair.json --url devnet",
+    "chain:build": "cd chain && cargo-build-sbf --manifest-path programs/james_registry/Cargo.toml --sbf-out-dir target/deploy",
+    "chain:deploy": "solana program deploy chain/target/deploy/james_registry.so --program-id .keys/james_registry-keypair.json --url devnet",
     "chain:init": "node scripts/chain-init.mjs",
     "agent:key": "solana-keygen new --no-bip39-passphrase -o .keys/agent.json",
     "agent:address": "solana-keygen pubkey .keys/agent.json"

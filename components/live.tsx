@@ -1,5 +1,6 @@
 "use client";
 // One poller for the whole page: the header status and the console both read the agent's live feed.
+import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 export type LiveEvent = { seq: number; ts: string; gene: string | null; k: string; fac?: string; x: string; [extra: string]: unknown };
@@ -27,7 +28,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         if (d.events.length) {
           // the neuron field fires a cell for each new step the agent takes (not for the backlog on first load)
           if (after.current > 0) {
-            window.dispatchEvent(new Event("engram:pulse"));
+            window.dispatchEvent(new Event("james:pulse"));
           }
           after.current = d.events[d.events.length - 1].seq;
           setLast(d.events[d.events.length - 1]);
@@ -73,6 +74,7 @@ function step(e: LiveEvent | null) {
     case "receipt": return "printed a receipt";
     case "pass": return "a prediction held";
     case "swarm": return e.fac && e.fac !== "swarm" ? `${e.fac} analyst` : "swarm";
+    case "study": return "running a sealed study";
     default: return "";
   }
 }
@@ -97,9 +99,9 @@ export function LivePulse() {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const d = describe(status, last, now);
   return (
-    <span className="pulse" aria-live="polite">
-      <span className={`dot${d.on ? "" : " off"}`} aria-hidden />
-      <span>{d.text}</span>
-    </span>
+    <Link className={`live${d.on ? "" : " off"}`} href="/#live" aria-live="polite">
+      <i aria-hidden />
+      <span>{d.on ? <b>live </b> : null}{d.text}</span>
+    </Link>
   );
 }

@@ -3,7 +3,7 @@ import { getJSON, SourceError } from "@/lib/server/http";
 import { level, type CellKind, type Facet, type Finding, type GeneRef } from "./types";
 
 const OT = "https://api.platform.opentargets.org/api/v4/graphql";
-const AD_EFO = "MONDO_0004975"; // Alzheimer disease
+export const PD_ID = "MONDO_0005180"; // Parkinson disease
 
 const ot = <T>(query: string, variables: Record<string, unknown>) =>
   getJSON<{ data?: T; errors?: { message: string }[] }>("Open Targets", OT, {
@@ -47,11 +47,11 @@ export async function readGenetics(g: GeneRef): Promise<Finding> {
   const d = await ot<{
     disease: { associatedTargets: { rows: { score: number; datatypeScores: { id: string; score: number }[] }[] } };
   }>(
-    `query($ensg:String!){ disease(efoId:"${AD_EFO}"){ associatedTargets(Bs:[$ensg]){ rows{ score datatypeScores{ id score } } } } }`,
+    `query($ensg:String!){ disease(efoId:"${PD_ID}"){ associatedTargets(Bs:[$ensg]){ rows{ score datatypeScores{ id score } } } } }`,
     { ensg: g.ensg },
   );
   const row = d.disease.associatedTargets.rows[0];
-  if (!row) return make("genetics", 0, "no association with Alzheimer's on record", { overall: 0 });
+  if (!row) return make("genetics", 0, "no association with Parkinson's on record", { overall: 0 });
   const dt = Object.fromEntries(row.datatypeScores.map((x) => [x.id, round(x.score)]));
   const gen = dt.genetic_association ?? 0;
   return make(
@@ -105,6 +105,8 @@ export async function readChem(g: GeneRef): Promise<Finding> {
 }
 
 // ---------------------------------------------------------------- cell type (Human Protein Atlas, single-cell RNA)
+// The Protein Atlas single-cell set has no midbrain dopamine neurons, so the brain-region data stands in
+// for them: a gene enriched in the midbrain (TH, SLC6A3, DDC) is read as a dopamine-neuron gene.
 type HpaRow = {
   Gene: string;
   "RNA single cell type specificity"?: string;
@@ -112,11 +114,12 @@ type HpaRow = {
   "RNA single cell type specific nCPM"?: Record<string, string> | null;
   "RNA brain regional specificity"?: string;
   "RNA brain regional distribution"?: string;
+  "RNA brain regional specific nTPM"?: Record<string, string> | null;
 };
 const brainKind = (cellType: string): CellKind | null =>
   /microglia/i.test(cellType) ? "microglia"
   : /astrocyte/i.test(cellType) ? "astrocyte"
-  : /oligodendrocyte precursor|\bOPC/i.test(cellType) ? "OPC"
+  : /oligodendrocyte precursor|OPC/i.test(cellType) ? "OPC"
   : /oligodendrocyte/i.test(cellType) ? "oligodendrocyte"
   : /neuron/i.test(cellType) ? "neuron"
   : null;
@@ -124,7 +127,7 @@ const brainKind = (cellType: string): CellKind | null =>
 export async function readCell(g: GeneRef): Promise<Finding> {
   const rows = await getJSON<HpaRow[]>(
     "Human Protein Atlas",
-    `https://www.proteinatlas.org/api/search_download.php?search=${encodeURIComponent(g.symbol)}&format=json&columns=g,rnascs,rnascd,rnascsm,rnabrs,rnabrd&compress=no`,
+    `https://www.proteinatlas.org/api/search_download.php?search=${encodeURIComponent(g.symbol)}&format=json&columns=g,rnascs,rnascd,rnascsm,rnabrs,rnabrd,rnabrsm&compress=no`,
   );
   const r = rows.find((x) => x.Gene?.toUpperCase() === g.symbol.toUpperCase());
   if (!r) return make("cell", 0, "not in the Protein Atlas", { kind: "none" });
@@ -135,9 +138,14 @@ export async function readCell(g: GeneRef): Promise<Finding> {
     .sort((a, b) => b[1] - a[1]);
   const brain = cells.filter(([c]) => brainKind(c));
   const brainDist = r["RNA brain regional distribution"] ?? "";
+  const regions = r["RNA brain regional specific nTPM"] ?? {};
+  const midbrain = Number(regions.midbrain ?? NaN);
   let score = 0, kind: CellKind = "none", label = spec || "no single-cell data";
   if (brain.length && cells[0] && brainKind(cells[0][0])) {
     score = 1; kind = brainKind(cells[0][0])!; label = `${spec.toLowerCase()} in ${cells[0][0].toLowerCase()} (${Math.round(cells[0][1])} nCPM)`;
+  } else if (Number.isFinite(midbrain)) {
+    score = 0.9; kind = "neuron";
+    label = `enriched in the midbrain (${Math.round(midbrain)} nTPM), where the nigral dopamine neurons sit`;
   } else if (brain.length) {
     score = 0.75; kind = brainKind(brain[0][0])!; label = `${spec.toLowerCase()}, including ${brain[0][0].toLowerCase()}; strongest in ${cells[0][0].toLowerCase()}`;
   } else if (/detected in (all|many)/i.test(dist) && /detected in (all|many)/i.test(brainDist)) {
@@ -148,7 +156,7 @@ export async function readCell(g: GeneRef): Promise<Finding> {
     score = 0.1; label = `${spec.toLowerCase() || "specific"} outside the brain (${cells[0]?.[0]?.toLowerCase() ?? "elsewhere"})`;
   }
   return make("cell", score, label, {
-    kind, specificity: spec, distribution: dist, brain_distribution: brainDist,
+    kind, specificity: spec, distribution: dist, brain_distribution: brainDist, midbrain: Number.isFinite(midbrain) ? midbrain : null,
     cells: Object.fromEntries(cells.slice(0, 6)), elsewhere: cells.filter(([c]) => !brainKind(c)).slice(0, 3).map(([c]) => c),
   });
 }
@@ -160,7 +168,7 @@ export async function readClinic(g: GeneRef, drugs: string[]): Promise<Finding> 
   const terms = [g.symbol, ...drugs.slice(0, 3)].map((t) => (t.includes(" ") ? `"${t}"` : t)).join(" OR ");
   const d = await getJSON<{ totalCount?: number; studies: { protocolSection: { identificationModule: { nctId: string; briefTitle: string }; statusModule: { overallStatus: string } } }[] }>(
     "ClinicalTrials.gov",
-    `https://clinicaltrials.gov/api/v2/studies?query.cond=Alzheimer&query.term=${encodeURIComponent(terms)}&countTotal=true&pageSize=50&fields=NCTId,OverallStatus,BriefTitle`,
+    `https://clinicaltrials.gov/api/v2/studies?query.cond=Parkinson&query.term=${encodeURIComponent(terms)}&countTotal=true&pageSize=50&fields=NCTId,OverallStatus,BriefTitle`,
   );
   const status: Record<string, number> = {};
   for (const s of d.studies) {
@@ -175,7 +183,7 @@ export async function readClinic(g: GeneRef, drugs: string[]): Promise<Finding> 
   return make(
     "clinic",
     score,
-    total === 0 ? "no Alzheimer's trials on record: an open field" : `${total} Alzheimer's trial${total === 1 ? "" : "s"}, ${stopped} stopped`,
+    total === 0 ? "no Parkinson's trials on record: an open field" : `${total} Parkinson's trial${total === 1 ? "" : "s"}, ${stopped} stopped`,
     { total, stopped, status, examples, query: terms, ambiguous: g.symbol.length <= 3, against: stopped / seen > 0.5 },
   );
 }
@@ -192,28 +200,32 @@ function ncbiCount(term: string): Promise<number> {
 }
 
 export async function readLit(g: GeneRef): Promise<Finding> {
-  const both = await ncbiCount(`${g.symbol}[tiab] AND (alzheimer*[tiab] OR "amyloid beta"[tiab])`);
+  const both = await ncbiCount(`${g.symbol}[tiab] AND (parkinson*[tiab] OR synuclein*[tiab] OR "Lewy body"[tiab] OR "Lewy bodies"[tiab])`);
   const alone = await ncbiCount(`${g.symbol}[tiab]`);
   const score = 1 - Math.log10(both + 1) / Math.log10(2000);
   const rare = g.symbol.length <= 3 && alone > 20000;
   return make(
     "lit",
     score,
-    both === 0 ? "no papers tie it to Alzheimer's yet" : `${both.toLocaleString("en")} Alzheimer's papers of ${alone.toLocaleString("en")}${both > 500 ? ": well-trodden" : ""}`,
+    both === 0 ? "no papers tie it to Parkinson's yet" : `${both.toLocaleString("en")} Parkinson's papers of ${alone.toLocaleString("en")}${both > 500 ? ": well-trodden" : ""}`,
     { both, alone, rare_name: rare },
   );
 }
 
 // ---------------------------------------------------------------- pathways (Reactome)
+// Themes are ordered by how directly genetics ties them to Parkinson's: mitophagy (PINK1, PRKN), the
+// lysosome (GBA1, TMEM175, ATP13A2), vesicle traffic (LRRK2, VPS35, RAB32) and the dopamine synapse
+// (SNCA, SYNJ1, DNAJC6) first; broad biology after.
 const THEMES: [string, RegExp, number][] = [
-  ["amyloid and tau", /amyloid|\bAPP\b|\btau\b|gamma-secretase|NOTCH/i, 1],
-  ["immune signalling", /immun|interleukin|toll|TLR|cytokine|complement|interferon|NF-kB|DAP12|TREM|\bFc|neutrophil|MHC|antigen|inflamm/i, 1],
-  ["lipid handling", /lipid|cholesterol|lipoprotein|fatty acid|sphingo|phospholipid|LDL|HDL/i, 1],
-  ["endosomal traffic", /endocyt|endosom|vesicle|clathrin|golgi|trafficking|lysosom|transport to/i, 1],
-  ["protein handling", /proteasom|ubiquitin|autophag|unfolded|chaperone|degradation|SUMO|folding/i, 0.9],
-  ["synapse", /neurotransmitter|synap|neuronal system|potassium channel|glutamate|GABA|NMDA|AMPA/i, 0.8],
-  ["energy", /metabolism|mitochond|respiratory|TCA|glycolysis|oxidative/i, 0.6],
-  ["growth signalling", /signaling by|MAPK|RAF|\bRTK|PI3K|AKT|kinase|GPCR|NTRK|BDNF/i, 0.6],
+  ["mitochondrial quality control", /mitophagy|PINK1|PRKN|parkin|mitochondrial (protein import|biogenesis|fission|fusion|translation|calcium|dynamics)|complex I|respiratory electron|mitochondri/i, 1],
+  ["lysosome and autophagy", /lysosom|autophag|glycosphingolipid|sphingolipid|glucocerebrosid|chaperone mediated|ESCRT|mTORC1|vacuol/i, 1],
+  ["vesicle traffic", /RABs?|RAB GEF|RAB GAP|endocyt|endosom|retromer|golgi|vesicle|clathrin|trafficking|COPI|COPII|exocyt|transport to/i, 1],
+  ["dopamine synapse", /dopamine|catecholamine|monoamine|neurotransmitter|synap|neuronal system|potassium channel|calcium channel|glutamate|GABA/i, 1],
+  ["immune signalling", /immun|interleukin|toll|TLR|cytokine|complement|interferon|NF-kB|MHC|antigen|inflamm|TREM|Fc/i, 0.9],
+  ["protein handling", /proteasom|ubiquitin|unfolded|chaperone|degradation|SUMO|folding|neddylation/i, 0.9],
+  ["iron and oxidative stress", /iron|ferroptosis|heme|oxidative stress|reactive oxygen|glutathione|detoxification|NRF2|KEAP1/i, 0.8],
+  ["energy", /metabolism|glycolysis|TCA|citric acid|oxidative phosphorylation|pyruvate/i, 0.6],
+  ["growth signalling", /signaling by|MAPK|RAF|RTK|PI3K|AKT|kinase|GPCR|NTRK|GDNF|RET/i, 0.6],
 ];
 
 export async function readPath(g: GeneRef): Promise<Finding> {

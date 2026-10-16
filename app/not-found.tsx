@@ -2,12 +2,13 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <main className="page">
-      <header className="phead">
+    <main>
+      <section className="page-hero">
+        <p className="kicker">Not found</p>
         <h1>Nothing on this slide.</h1>
-        <p>The page you asked for isn&apos;t in the notebook. A gene page exists only once the agent has read that gene.</p>
-        <p><Link className="btn" href="/">Back to the console</Link></p>
-      </header>
+        <p className="lede">The page you asked for isn&apos;t in the notebook. A receipt page exists only once that receipt has been printed.</p>
+        <p className="cta"><Link className="btn" href="/">Back to the console</Link><Link className="link" href="/gene">Look up a gene</Link></p>
+      </section>
     </main>
   );
 }

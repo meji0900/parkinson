@@ -15,13 +15,13 @@ import { anchorIx, decodePrediction, decodeRegistry, faucetIx, PREDICTION_DISC, 
 
 export type Mode = "program" | "memo" | "off";
 
-const g = globalThis as unknown as { __engramConn?: Connection; __engramMode?: { at: number; mode: Mode } };
-export const connection = () => (g.__engramConn ??= new Connection(process.env.SOLANA_RPC_URL ?? PUBLIC_RPC, "confirmed"));
+const g = globalThis as unknown as { __jamesConn?: Connection; __jamesMode?: { at: number; mode: Mode } };
+export const connection = () => (g.__jamesConn ??= new Connection(process.env.SOLANA_RPC_URL ?? PUBLIC_RPC, "confirmed"));
 const short = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/\s+/g, " ").slice(0, 160);
 
 export async function chainMode(): Promise<Mode> {
   if (process.env.CHAIN_ENABLED === "false" || !agentKeypair()) return "off";
-  const hit = g.__engramMode;
+  const hit = g.__jamesMode;
   if (hit && Date.now() - hit.at < 60_000) return hit.mode;
   let mode: Mode = hit?.mode ?? "memo";
   try {
@@ -30,7 +30,7 @@ export async function chainMode(): Promise<Mode> {
   } catch {
     /* keep the last known mode while the RPC is down */
   }
-  g.__engramMode = { at: Date.now(), mode };
+  g.__jamesMode = { at: Date.now(), mode };
   return mode;
 }
 
@@ -53,7 +53,7 @@ export async function sealOnChain(exp: Experiment): Promise<void> {
   const agent = agentKeypair();
   if ((await chainMode()) === "off" || !agent || exp.chain_tx) return;
   try {
-    const sig = await send([memo(`engram:seal:v${exp.protocol}:${exp.registration}`)], [agent]);
+    const sig = await send([memo(`james:seal:v${exp.protocol}:${exp.registration}`)], [agent]);
     run("update experiments set chain_tx = ?, chain_status = 'memo-sealed' where registration = ?", sig, exp.registration);
   } catch (e) {
     run("update experiments set chain_status = ? where registration = ?", "seal-failed: " + short(e), exp.registration);
@@ -76,7 +76,7 @@ export async function resolveOnChain(exp: Experiment): Promise<void> {
         run("update experiments set reward_tx = ?, chain_status = 'rewarded' where registration = ?", r, x.registration);
       }
     } else {
-      const sig = await send([memo(`engram:result:${x.registration}:${x.passed ? 1 : 0}:${effD.toFixed(3)}:${effR.toFixed(3)}:${x.receipt ?? 0}`)], [agent]);
+      const sig = await send([memo(`james:result:${x.registration}:${x.passed ? 1 : 0}:${effD.toFixed(3)}:${effR.toFixed(3)}:${x.receipt ?? 0}`)], [agent]);
       run("update experiments set resolve_tx = ?, chain_status = 'memo-resolved' where registration = ?", sig, x.registration);
     }
   } catch (e) {
@@ -163,7 +163,7 @@ export async function anchorReceipts(force = false): Promise<string | null> {
   if (head.no <= last.no || (!force && head.no - last.no < 25 && Date.now() - last.at < 3600_000)) return null;
   const sig = mode === "program"
     ? await send([anchorIx(head.no, Buffer.from(head.hash, "hex"), agent.publicKey)], [agent])
-    : await send([memo(`engram:receipts:${head.no}:${head.hash}`)], [agent]);
+    : await send([memo(`james:receipts:${head.no}:${head.hash}`)], [agent]);
   run("insert into anchors (at, head_no, head_hash, tx) values (?, ?, ?, ?)", nowIso(), head.no, head.hash, sig);
   kvSet("anchor_last", { no: head.no, at: Date.now() });
   return sig;

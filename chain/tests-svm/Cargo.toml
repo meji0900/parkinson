@@ -1,5 +1,5 @@
 [package]
-name = "engram-tests-svm"
+name = "james-tests-svm"
 version = "0.1.0"
 edition = "2021"
 publish = false

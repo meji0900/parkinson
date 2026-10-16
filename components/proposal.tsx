@@ -18,22 +18,20 @@ export function Proposal({ hyp, gene }: { hyp: Hyp; gene: string }) {
     }
   };
   return (
-    <article className="proposal" aria-label={`Proposal for ${gene}`}>
-      <p className="quiet small" style={{ margin: "0 0 6px" }}>
-        Proposal for <i className="g">{gene}</i>, translation score {hyp.score.toFixed(2)}
-      </p>
-      <h3>{hyp.statement}</h3>
-      <dl>
-        <dt>Cell type</dt><dd>{hyp.cell}</dd>
-        <dt>Direction</dt><dd>Both arms: {hyp.direction_why}.</dd>
-        <dt>Molecular readout</dt><dd>{hyp.molecular}</dd>
-        <dt>Functional readout</dt><dd>{hyp.functional}</dd>
-        <dt>What would rule it out</dt><dd>{hyp.falsifier}</dd>
+    <figure className="hyp" aria-label={`Proposal for ${gene}`}>
+      <figcaption>proposal for <i>{gene}</i>, translation score {hyp.score.toFixed(2)}</figcaption>
+      <p className="hyp-statement">{hyp.statement}</p>
+      <dl className="hyp-grid">
+        <div><dt>Cell type</dt><dd>{hyp.cell}</dd></div>
+        <div><dt>Direction</dt><dd>Both arms: {hyp.direction_why}.</dd></div>
+        <div><dt>Molecular readout</dt><dd>{hyp.molecular}</dd></div>
+        <div><dt>Functional readout</dt><dd>{hyp.functional}</dd></div>
+        <div className="span"><dt>Rule-out</dt><dd>{hyp.falsifier}</dd></div>
+        <div className="span">
+          <dt>Lab request</dt>
+          <dd>{hyp.lab_ask} <button className="copy" type="button" onClick={copy}>{copied ? "copied" : "copy"}</button></dd>
+        </div>
       </dl>
-      <div className="lab-ask">
-        <span style={{ flex: 1 }}><b>Lab request.</b> {hyp.lab_ask}</span>
-        <button type="button" className="btn line sm" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
-      </div>
-    </article>
+    </figure>
   );
 }

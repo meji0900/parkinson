@@ -46,18 +46,29 @@ create table if not exists pending_tx (
 );
 create table if not exists notebook (night text primary key, at text, pool integer, investigated integer, data text);
 create table if not exists kv (k text primary key, v text);
+create table if not exists studies (
+  registration text primary key, id text not null, cohort text not null, at text not null, state text not null,
+  def text not null, result text, receipt integer
+);
+create table if not exists work_units (
+  study text not null, unit integer not null, seed integer not null, shuffles integer not null, count integer,
+  by text, at text, primary key (study, unit)
+);
+create table if not exists proposals (
+  id integer primary key autoincrement, at text not null, by text, gene text, grp text, text text, ip text
+);
 `;
 
-const g = globalThis as unknown as { __engramDb?: DatabaseSync };
+const g = globalThis as unknown as { __jamesDb?: DatabaseSync };
 
 export function db(): DatabaseSync {
-  if (g.__engramDb) return g.__engramDb;
-  const file = process.env.ENGRAM_DB ?? path.join(process.cwd(), "data", "engram.db");
+  if (g.__jamesDb) return g.__jamesDb;
+  const file = process.env.JAMES_DB ?? path.join(process.cwd(), "data", "james.db");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const d = new DatabaseSync(file);
   d.exec("pragma journal_mode = wal; pragma busy_timeout = 5000; pragma synchronous = normal;");
   d.exec(SCHEMA);
-  g.__engramDb = d;
+  g.__jamesDb = d;
   return d;
 }
 

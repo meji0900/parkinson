@@ -1,4 +1,4 @@
-// Instruction builders and account decoders for the engram_registry program, written by hand from the
+// Instruction builders and account decoders for the james_registry program, written by hand from the
 // Rust source (Anchor discriminators are sha256("global:<ix>") and sha256("account:<Name>"), first 8 bytes).
 import { createHash } from "node:crypto";
 import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";

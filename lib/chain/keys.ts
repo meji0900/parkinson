@@ -5,10 +5,10 @@ import { createPublicKey, verify } from "node:crypto";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-const g = globalThis as unknown as { __engramAgentKey?: Keypair | null };
+const g = globalThis as unknown as { __jamesAgentKey?: Keypair | null };
 
 export function agentKeypair(): Keypair | null {
-  if (g.__engramAgentKey !== undefined) return g.__engramAgentKey;
+  if (g.__jamesAgentKey !== undefined) return g.__jamesAgentKey;
   let key: Keypair | null = null;
   try {
     const raw = process.env.AGENT_SECRET_KEY?.trim();
@@ -19,9 +19,9 @@ export function agentKeypair(): Keypair | null {
       if (fs.existsSync(file)) key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(file, "utf8"))));
     }
   } catch (e) {
-    console.error("[engram] agent key could not be read:", e instanceof Error ? e.message : e);
+    console.error("[james] agent key could not be read:", e instanceof Error ? e.message : e);
   }
-  g.__engramAgentKey = key;
+  g.__jamesAgentKey = key;
   return key;
 }
 

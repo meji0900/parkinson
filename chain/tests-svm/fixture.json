@@ -1,5 +1,5 @@
 {
- "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+ "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
  "seeds": {
   "agent": 1,
   "wallet": 2,
@@ -8,15 +8,15 @@
  "steps": [
   {
    "name": "initialize",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "EJnV5KJTtVuVgXLWEWYGk6trCpeHY6p2dWBrKxE73nCN",
+     "pubkey": "8xAdb1S2ikZdxhp4mRyZwenUoruYU8dgraWzDtmkz4Ji",
      "signer": false,
      "writable": true
     },
@@ -44,15 +44,15 @@
   },
   {
    "name": "wallet registers a prediction (agent pays)",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
@@ -72,7 +72,7 @@
      "writable": false
     }
    ],
-   "data": "735cd753ab85a1349162a45b9ccccc8ba7ecbb3fae044fcf6f31940dd1a78dcb8e98d52dc440e64f5452454d3200000000000000000000000000",
+   "data": "735cd753ab85a1342240da57b252b276798b310bca3641662cc8cc8be9e0ebbbde9a3780de8692814c52524b3200000000000000000000000000",
    "signers": [
     "agent",
     "wallet"
@@ -81,15 +81,15 @@
   },
   {
    "name": "the same hash cannot be registered twice",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
@@ -109,7 +109,7 @@
      "writable": false
     }
    ],
-   "data": "735cd753ab85a1349162a45b9ccccc8ba7ecbb3fae044fcf6f31940dd1a78dcb8e98d52dc440e64f5452454d3200000000000000000000000000",
+   "data": "735cd753ab85a1342240da57b252b276798b310bca3641662cc8cc8be9e0ebbbde9a3780de8692814c52524b3200000000000000000000000000",
    "signers": [
     "agent",
     "wallet"
@@ -118,15 +118,15 @@
   },
   {
    "name": "a stranger cannot write the result",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
@@ -144,15 +144,15 @@
   },
   {
    "name": "the oracle writes the result",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
@@ -170,15 +170,15 @@
   },
   {
    "name": "a result cannot be written twice",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
@@ -196,20 +196,20 @@
   },
   {
    "name": "the predictor is rewarded",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": false
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "EJnV5KJTtVuVgXLWEWYGk6trCpeHY6p2dWBrKxE73nCN",
+     "pubkey": "8xAdb1S2ikZdxhp4mRyZwenUoruYU8dgraWzDtmkz4Ji",
      "signer": false,
      "writable": true
     },
@@ -219,7 +219,7 @@
      "writable": false
     },
     {
-     "pubkey": "ETAyCZxZs8NnnPpwQAEnj3rwFsqeubGBwRwaVnnFGp7P",
+     "pubkey": "Bedx2dqBJzvrWaV1qfYpmNCQ3YN3so4scwKWTfyLnHyD",
      "signer": false,
      "writable": true
     },
@@ -252,20 +252,20 @@
   },
   {
    "name": "a reward cannot be paid twice",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": false
     },
     {
-     "pubkey": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
+     "pubkey": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "EJnV5KJTtVuVgXLWEWYGk6trCpeHY6p2dWBrKxE73nCN",
+     "pubkey": "8xAdb1S2ikZdxhp4mRyZwenUoruYU8dgraWzDtmkz4Ji",
      "signer": false,
      "writable": true
     },
@@ -275,7 +275,7 @@
      "writable": false
     },
     {
-     "pubkey": "ETAyCZxZs8NnnPpwQAEnj3rwFsqeubGBwRwaVnnFGp7P",
+     "pubkey": "Bedx2dqBJzvrWaV1qfYpmNCQ3YN3so4scwKWTfyLnHyD",
      "signer": false,
      "writable": true
     },
@@ -308,15 +308,15 @@
   },
   {
    "name": "the agent seals its own prediction",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "5VMXXyyLvxrnv1FSTLvQuDiMks8bUedfBSQS3qdXpWrB",
+     "pubkey": "2w3aRbUS6KPYa3jEpeyiVwe813aBTR3kTxeEqJcz6Y54",
      "signer": false,
      "writable": true
     },
@@ -336,7 +336,7 @@
      "writable": false
     }
    ],
-   "data": "735cd753ab85a134d5f4c7df58a6ac7a70e8835674340ccd5e7bf95f15cc364acbf37ea5f2d4633641504f450000000000000000000000000602",
+   "data": "735cd753ab85a1345ffa933dcb838f6d21583b1801fc41a02868499cd703197aa07ca19883a084e3474241310000000000000000000000000602",
    "signers": [
     "agent"
    ],
@@ -344,15 +344,15 @@
   },
   {
    "name": "a failed result is written",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "5VMXXyyLvxrnv1FSTLvQuDiMks8bUedfBSQS3qdXpWrB",
+     "pubkey": "2w3aRbUS6KPYa3jEpeyiVwe813aBTR3kTxeEqJcz6Y54",
      "signer": false,
      "writable": true
     },
@@ -370,20 +370,20 @@
   },
   {
    "name": "failed predictions earn nothing",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": false
     },
     {
-     "pubkey": "5VMXXyyLvxrnv1FSTLvQuDiMks8bUedfBSQS3qdXpWrB",
+     "pubkey": "2w3aRbUS6KPYa3jEpeyiVwe813aBTR3kTxeEqJcz6Y54",
      "signer": false,
      "writable": true
     },
     {
-     "pubkey": "EJnV5KJTtVuVgXLWEWYGk6trCpeHY6p2dWBrKxE73nCN",
+     "pubkey": "8xAdb1S2ikZdxhp4mRyZwenUoruYU8dgraWzDtmkz4Ji",
      "signer": false,
      "writable": true
     },
@@ -393,7 +393,7 @@
      "writable": false
     },
     {
-     "pubkey": "7UL5h14QAvmsVdi7WFuajs7sbSjM6LTmkuihH5g6uhFR",
+     "pubkey": "HecAg9nSKYCdJayffphgvTBQXcCcSVhC4PqsFcSQMv1z",
      "signer": false,
      "writable": true
     },
@@ -426,10 +426,10 @@
   },
   {
    "name": "receipt head checkpoint",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
@@ -439,7 +439,7 @@
      "writable": false
     }
    ],
-   "data": "b12b289b444533a705000000000000009162a45b9ccccc8ba7ecbb3fae044fcf6f31940dd1a78dcb8e98d52dc440e64f",
+   "data": "b12b289b444533a705000000000000002240da57b252b276798b310bca3641662cc8cc8be9e0ebbbde9a3780de869281",
    "signers": [
     "agent"
    ],
@@ -447,10 +447,10 @@
   },
   {
    "name": "checkpoints only move forward",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": true
     },
@@ -460,7 +460,7 @@
      "writable": false
     }
    ],
-   "data": "b12b289b444533a70500000000000000d5f4c7df58a6ac7a70e8835674340ccd5e7bf95f15cc364acbf37ea5f2d46336",
+   "data": "b12b289b444533a705000000000000005ffa933dcb838f6d21583b1801fc41a02868499cd703197aa07ca19883a084e3",
    "signers": [
     "agent"
    ],
@@ -468,15 +468,15 @@
   },
   {
    "name": "faucet pays a wallet",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": false
     },
     {
-     "pubkey": "EJnV5KJTtVuVgXLWEWYGk6trCpeHY6p2dWBrKxE73nCN",
+     "pubkey": "8xAdb1S2ikZdxhp4mRyZwenUoruYU8dgraWzDtmkz4Ji",
      "signer": false,
      "writable": true
     },
@@ -486,7 +486,7 @@
      "writable": false
     },
     {
-     "pubkey": "ETAyCZxZs8NnnPpwQAEnj3rwFsqeubGBwRwaVnnFGp7P",
+     "pubkey": "Bedx2dqBJzvrWaV1qfYpmNCQ3YN3so4scwKWTfyLnHyD",
      "signer": false,
      "writable": true
     },
@@ -519,15 +519,15 @@
   },
   {
    "name": "a stranger cannot run the faucet",
-   "program": "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn",
+   "program": "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb",
    "keys": [
     {
-     "pubkey": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
+     "pubkey": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
      "signer": false,
      "writable": false
     },
     {
-     "pubkey": "EJnV5KJTtVuVgXLWEWYGk6trCpeHY6p2dWBrKxE73nCN",
+     "pubkey": "8xAdb1S2ikZdxhp4mRyZwenUoruYU8dgraWzDtmkz4Ji",
      "signer": false,
      "writable": true
     },
@@ -537,7 +537,7 @@
      "writable": false
     },
     {
-     "pubkey": "ETAyCZxZs8NnnPpwQAEnj3rwFsqeubGBwRwaVnnFGp7P",
+     "pubkey": "Bedx2dqBJzvrWaV1qfYpmNCQ3YN3so4scwKWTfyLnHyD",
      "signer": false,
      "writable": true
     },
@@ -570,9 +570,9 @@
   }
  ],
  "dump": {
-  "registry": "FAJUEtXN92SNikmxtp61pXmSiagij57oW4Qx84T5j3Lr",
-  "prediction1": "4xJSHsUfavRBats7ZtyoLTete1v4qYbdABt8xhZ58gP5",
-  "prediction2": "5VMXXyyLvxrnv1FSTLvQuDiMks8bUedfBSQS3qdXpWrB",
-  "walletAta": "ETAyCZxZs8NnnPpwQAEnj3rwFsqeubGBwRwaVnnFGp7P"
+  "registry": "2MA2ofE3GDkxQXXZcx6SPQYMVqQMYeKNCisybts2hCFK",
+  "prediction1": "5un9SJ8d7DucFroCu5CrDwjyEUnNH2P6wamnNwaqP2qv",
+  "prediction2": "2w3aRbUS6KPYa3jEpeyiVwe813aBTR3kTxeEqJcz6Y54",
+  "walletAta": "Bedx2dqBJzvrWaV1qfYpmNCQ3YN3so4scwKWTfyLnHyD"
  }
 }

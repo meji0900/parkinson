@@ -1,12 +1,12 @@
-﻿[package]
-name = "engram_registry"
+[package]
+name = "james_registry"
 version = "0.1.0"
-description = "Engram: sealed Alzheimer's predictions, oracle results, receipt checkpoints and the test token"
+description = "james: sealed Parkinson's predictions, oracle results, receipt checkpoints and the test token"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "engram_registry"
+name = "james_registry"
 
 [features]
 default = []

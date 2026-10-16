@@ -14,8 +14,8 @@ export type Result = {
 };
 
 const AXES: [string, string][] = [
-  ["braak", "tracks Braak (tau) stage"],
-  ["thal", "tracks Thal (amyloid) phase"],
+  ["braak", "tracks Braak Lewy-body stage"],
+  ["nigra", "tracks nigral neuron loss"],
   ["resilience", "differs in resilient donors"],
 ];
 export const fmt = (h: Stat) => (h ? `${h.effect >= 0 ? "+" : ""}${h.effect.toFixed(2)} (p ${h.p < 0.001 ? h.p.toExponential(1) : h.p.toFixed(3)}, n ${h.n})` : "n/a");
@@ -24,9 +24,9 @@ const toB64 = (b: Uint8Array) => btoa(String.fromCharCode(...b));
 const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const txLink = (sig: string | null) => (sig && !sig.startsWith("account:") ? explorer("tx", sig) : null);
 
-export function Predict({ groups, chainMode }: { groups: string[]; chainMode: string }) {
+export function Predict({ groups, chainMode, donors }: { groups: string[]; chainMode: string; donors: number }) {
   const { publicKey, signTransaction } = useWallet();
-  const [f, setF] = useState({ gene: "", group: "microglia", axis: "braak", by: "" });
+  const [f, setF] = useState({ gene: "", group: "dopamine neurons", axis: "braak", by: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [out, setOut] = useState<Result | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -40,13 +40,13 @@ export function Predict({ groups, chainMode }: { groups: string[]; chainMode: st
   const post = async (url: string, payload: unknown) => {
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const d = await r.json();
-    if (!r.ok || d.error) throw new Error(d.error ?? "something went wrong");
+    if (!r.ok || d.error) throw new Error(d.error ?? "the server did not accept that; try again");
     return d;
   };
 
   async function anonymous(e: React.FormEvent) {
     e.preventDefault();
-    setBusy("Sealing the prediction, then testing it on the donors…"); setErr(null); setOut(null);
+    setBusy(`Sealing the prediction, then testing it on half of the ${donors} donors…`); setErr(null); setOut(null);
     try { setOut(await post("/api/predict", f)); load(); }
     catch (x) { setErr((x as Error).message); }
     finally { setBusy(null); }
@@ -73,38 +73,42 @@ export function Predict({ groups, chainMode }: { groups: string[]; chainMode: st
 
   return (
     <>
-      <form className="form" onSubmit={anonymous}>
-        <label>Gene<input required value={f.gene} onChange={(e) => setF({ ...f, gene: e.target.value })} placeholder="e.g. SORL1" maxLength={16} autoComplete="off" spellCheck={false} /></label>
-        <label>Cell group<select value={f.group} onChange={(e) => setF({ ...f, group: e.target.value })}>{groups.map((g) => <option key={g}>{g}</option>)}</select></label>
-        <label>Outcome<select value={f.axis} onChange={(e) => setF({ ...f, axis: e.target.value })}>{AXES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-        <label>Your name (optional, shown publicly)<input value={f.by} onChange={(e) => setF({ ...f, by: e.target.value })} maxLength={40} /></label>
+      <form className="predict" onSubmit={anonymous} autoComplete="off">
+        <label>gene<input required value={f.gene} onChange={(e) => setF({ ...f, gene: e.target.value })} placeholder="GBA1" maxLength={16} spellCheck={false} /></label>
+        <label>cell type<select value={f.group} onChange={(e) => setF({ ...f, group: e.target.value })}>{groups.map((g) => <option key={g}>{g}</option>)}</select></label>
+        <label>outcome<select value={f.axis} onChange={(e) => setF({ ...f, axis: e.target.value })}>{AXES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+        <label className="who">your name on the record (optional)<input value={f.by} onChange={(e) => setF({ ...f, by: e.target.value })} maxLength={40} placeholder="anonymous" spellCheck={false} /></label>
         <div className="actions">
           <button className="btn" type="submit" disabled={!!busy}>Register and test</button>
           {chainMode === "program" && (publicKey
-            ? <button className="btn eosin" type="button" disabled={!!busy || !f.gene} onClick={withWallet}>Sign with wallet and test</button>
-            : <ConnectWallet label="Connect a wallet to sign it on-chain" />)}
-          {busy && <span className="quiet small">{busy}</span>}
+            ? <button className="btn dab" type="button" disabled={!!busy || !f.gene} onClick={withWallet}>Sign with wallet and test</button>
+            : <ConnectWallet label="Sign it on-chain instead" />)}
+          {busy && <span className="busy" role="status">{busy}</span>}
         </div>
       </form>
-      <p className="small quiet" style={{ marginTop: 10 }}>
+      <p className="small quiet">
         {chainMode === "program"
-          ? "Signed predictions get their own account on Solana devnet. If one replicates, the program mints test tokens to the wallet that made it."
+          ? "Signed predictions get their own account on Solana devnet. If one replicates, the registry mints test tokens to the wallet that made it."
           : chainMode === "memo"
-            ? "Each prediction's hash is written to Solana devnet in a memo before the data is read."
-            : "On-chain sealing is off on this server; predictions are sealed in the ledger only."}
+            ? "Each prediction's hash is also written to Solana devnet in a memo before the data is read."
+            : "Predictions are sealed in the ledger; on-chain sealing is off on this server."}
       </p>
-      {err && <p className="err">{err}</p>}
-      {out && <ResultCard r={out} />}
-      <h3>Visitor predictions <span className="quiet small">({count ? `${count} so far` : "none yet"})</span></h3>
-      <ul className="rows">
-        {rows.slice(0, 12).map((r, i) => (
-          <li key={r.registration + i} className={r.passed ? "pass" : ""}>
-            <span><Link href={`/gene/${r.gene}`}><i className="g">{r.gene}</i></Link> in {r.group}, {r.axis}</span>
-            <span className="nums">{r.by || (r.wallet ? r.wallet.slice(0, 4) + "…" : "anonymous")}{r.repeat ? ", already registered" : ""}</span>
-            <span className={`verdict ${r.passed ? "ok" : "no"}`}>{r.passed ? "replicated" : r.receipt ? <Link href={`/receipt/${r.receipt}`}>receipt {pad(r.receipt)}</Link> : "failed"}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="predict-out" aria-live="polite">
+        {err && <p className="err">{err}</p>}
+        {out && <ResultCard r={out} />}
+      </div>
+      <h3 className="ex-title">Visitor predictions <span>{count ? `${count.toLocaleString("en")} so far` : "none yet"}</span></h3>
+      {rows.length ? (
+        <ol className="experiments">
+          {rows.slice(0, 12).map((r, i) => (
+            <li key={r.registration + i} className={r.passed ? "pass" : ""}>
+              <span className="ex-gene"><Link href={`/gene/${r.gene}`}><i>{r.gene}</i></Link> in {r.group}, {r.axis}</span>
+              <span className="ex-nums">{r.by || (r.wallet ? r.wallet.slice(0, 4) + "…" : "anonymous")}{r.repeat ? ", already registered" : ""}</span>
+              <span className="ex-verdict">{r.passed ? "held" : r.receipt ? <Link href={`/receipt/${r.receipt}`}>receipt {pad(r.receipt)}</Link> : "failed"}</span>
+            </li>
+          ))}
+        </ol>
+      ) : <p className="quiet small">The first one could be yours.</p>}
     </>
   );
 }
@@ -112,13 +116,13 @@ export function Predict({ groups, chainMode }: { groups: string[]; chainMode: st
 export function ResultCard({ r }: { r: Result }) {
   const seal = txLink(r.chain_tx), res = txLink(r.resolve_tx), reward = txLink(r.reward_tx);
   return (
-    <div className="panel out">
-      <pre className="code" style={{ margin: "0 0 12px" }}>{`${r.gene} in ${r.group}, ${r.axis}${r.repeat ? "   (registered earlier; recorded result)" : ""}
+    <div className="result">
+      <pre>{`${r.gene} in ${r.group}, ${r.axis}${r.repeat ? "   (registered earlier; this is the recorded result)" : ""}
 registered   ${r.registration.slice(0, 16)}…
 discovery    ${fmt(r.discovery)}
 held-out     ${fmt(r.replication)}
-verdict      ${r.passed ? "held in both halves" : "did not hold"}${r.simulated ? "\ncohort       simulated (not a finding)" : ""}`}</pre>
-      <p className="small" style={{ margin: 0 }}>
+verdict      ${r.passed ? "held in both halves" : "did not hold"}${r.simulated ? "\ncohort       simulated (tests the method, not biology)" : ""}`}</pre>
+      <p>
         {r.reason}.{" "}
         {r.receipt ? <><Link href={`/receipt/${r.receipt}`}>Receipt {pad(r.receipt)}</Link>. </> : null}
         <Link href={`/gene/${r.gene}`}>Everything on {r.gene}</Link>.

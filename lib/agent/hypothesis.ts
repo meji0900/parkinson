@@ -4,23 +4,49 @@ import type { Group } from "@/lib/atlas/cohort";
 import { FACETS, type CellKind, type Facet, type Finding, type Hypothesis } from "./types";
 
 const CELL: Record<CellKind, { label: string; model: string; functional: string; group: Group }> = {
-  neuron: { label: "neurons", model: "iPSC-derived cortical neurons", functional: "phospho-tau (pT217, pT181) accumulation and neurite integrity", group: "excitatory neurons" },
-  microglia: { label: "microglia", model: "iPSC-derived microglia (iMGL)", functional: "phagocytosis of amyloid fibrils and synaptosomes (pHrodo)", group: "microglia" },
-  astrocyte: { label: "astrocytes", model: "iPSC-derived astrocytes", functional: "glutamate uptake and amyloid clearance", group: "astrocytes" },
-  oligodendrocyte: { label: "oligodendrocytes", model: "iPSC-derived oligodendrocytes", functional: "myelin basic protein output and survival under oxidative stress", group: "oligodendrocytes" },
+  neuron: {
+    label: "dopamine neurons",
+    model: "iPSC-derived midbrain dopamine neurons (FOXA2+, LMX1A+, TH+)",
+    functional: "survival of TH-positive neurons and phospho-α-synuclein (pS129) inclusions after seeding with α-synuclein fibrils",
+    group: "dopamine neurons",
+  },
+  microglia: {
+    label: "microglia",
+    model: "iPSC-derived microglia (iMGL)",
+    functional: "uptake and clearance of α-synuclein fibrils and NLRP3 inflammasome activation (IL-1β release)",
+    group: "microglia",
+  },
+  astrocyte: {
+    label: "astrocytes",
+    model: "iPSC-derived midbrain astrocytes",
+    functional: "α-synuclein uptake and degradation, and dopamine neuron survival in co-culture",
+    group: "astrocytes",
+  },
+  oligodendrocyte: {
+    label: "oligodendrocytes",
+    model: "iPSC-derived oligodendrocytes",
+    functional: "α-synuclein uptake and myelin basic protein output under oxidative stress",
+    group: "oligodendrocytes",
+  },
   OPC: { label: "oligodendrocyte precursors", model: "iPSC-derived OPCs", functional: "differentiation into MBP-positive cells", group: "OPCs" },
-  none: { label: "a neuron, astrocyte and microglia tri-culture", model: "a tri-culture of iPSC neurons, astrocytes and microglia", functional: "neuronal survival under amyloid-oligomer challenge", group: "excitatory neurons" },
+  none: {
+    label: "a dopamine neuron, astrocyte and microglia tri-culture",
+    model: "a tri-culture of iPSC dopamine neurons, astrocytes and microglia",
+    functional: "dopamine neuron survival after α-synuclein fibril challenge",
+    group: "dopamine neurons",
+  },
 };
 
 const THEME: Record<string, string> = {
-  "amyloid and tau": "the secreted Abeta42/40 ratio and sAPPbeta",
-  "immune signalling": "IL-1beta and TNF release and the disease-associated marker panel (APOE, SPP1, CST7)",
-  "lipid handling": "cholesterol efflux and lipid-droplet load (BODIPY)",
-  "endosomal traffic": "early-endosome size (RAB5) and the secreted Abeta42/40 ratio",
-  "protein handling": "LC3-II flux and p62 accumulation",
-  synapse: "synaptophysin and PSD-95 puncta and spontaneous firing on a multi-electrode array",
+  "mitochondrial quality control": "PINK1–parkin mitophagy flux (mt-Keima) and phospho-ubiquitin (pS65-Ub)",
+  "lysosome and autophagy": "glucocerebrosidase (GCase) activity and LC3-II and p62 flux",
+  "vesicle traffic": "LRRK2 kinase activity (pT73-Rab10) and lysosome position",
+  "dopamine synapse": "evoked dopamine release and dopamine transporter uptake",
+  "immune signalling": "IL-1β and TNF release and surface HLA-DR",
+  "protein handling": "proteasome activity and the load of ubiquitinated protein",
+  "iron and oxidative stress": "reactive oxygen species (CellROX) and lipid peroxidation and labile iron",
   energy: "oxygen consumption rate and ATP output",
-  "growth signalling": "phospho-ERK and phospho-AKT response to BDNF",
+  "growth signalling": "phospho-ERK and phospho-AKT response to GDNF",
   other: "a transcriptome-wide state shift (bulk RNA-seq)",
   none: "a transcriptome-wide state shift (bulk RNA-seq)",
 };
@@ -48,7 +74,7 @@ export function writeHypothesis(symbol: string, f: Record<Facet, Finding>, score
     molecular,
     functional: cell.functional,
     falsifier: `If neither arm moves ${short} by 20% or more against non-targeting and empty-vector controls, across three independent differentiations, the hypothesis is wrong.`,
-    lab_ask: `CRISPRi knockdown and lentiviral overexpression of ${symbol} in ${cell.model}; n = 3 differentiations; readouts: ${molecular}; ${cell.functional}. Controls: non-targeting guide, empty vector. About 6 to 8 weeks.`,
+    lab_ask: `CRISPRi knockdown and lentiviral overexpression of ${symbol} in ${cell.model}; n = 3 differentiations; readouts: ${molecular}; ${cell.functional}. Controls: non-targeting guide, empty vector. About 8 to 10 weeks, most of it differentiation.`,
     scores: Object.fromEntries(FACETS.map((x) => [x, f[x].score])) as Record<Facet, number>,
     dissent: FACETS.filter((x) => f[x].level === "weak" || f[x].level === "absent"),
   };

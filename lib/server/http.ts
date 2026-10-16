@@ -1,9 +1,9 @@
 // Outbound calls to the public sources: timeout, one retry, and a small in-memory cache.
-const UA = "engram-research-agent/1.0 (+open Alzheimer's research notebook)";
+const UA = "james-research-agent/1.0 (+open Parkinson's research notebook)";
 
 type Cached = { at: number; value: unknown };
-const g = globalThis as unknown as { __engramHttpCache?: Map<string, Cached> };
-const cache = (g.__engramHttpCache ??= new Map());
+const g = globalThis as unknown as { __jamesHttpCache?: Map<string, Cached> };
+const cache = (g.__jamesHttpCache ??= new Map());
 const TTL = 6 * 60 * 60 * 1000;
 
 export class SourceError extends Error {

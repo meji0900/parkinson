@@ -1,4 +1,4 @@
-// Initializes the deployed engram_registry program: creates the registry account and the test-token mint,
+// Initializes the deployed james_registry program: creates the registry account and the test-token mint,
 // with the agent key as the authority (oracle). Run once after `npm run chain:deploy`.
 //   node scripts/chain-init.mjs [rewardTokens=50] [faucetTokens=250]
 import fs from "node:fs";
@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { Connection, Keypair, PublicKey, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 
 const RPC = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
-const PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID ?? "7WZ76mDSPhihpu6fCxejbKbaffVJKxedcjb4jGNnEADn");
+const PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID ?? "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb");
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const keyFile = process.env.AGENT_KEYPAIR_PATH ?? path.join(process.cwd(), ".keys", "agent.json");
 const agent = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(keyFile, "utf8"))));

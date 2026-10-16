@@ -53,7 +53,7 @@ export function ChainDashboard({ mode }: { mode: string }) {
   if (!publicKey) {
     return (
       <div className="panel">
-        <p style={{ marginTop: 0 }}>Connect a Solana wallet set to devnet to claim test tokens, sign predictions and queue genes.</p>
+        <p style={{ marginTop: 0 }}>Connect a Solana wallet set to devnet to claim test tokens, sign predictions and send the agent a gene to read next.</p>
         <ConnectWallet />
       </div>
     );
@@ -75,8 +75,8 @@ export function ChainDashboard({ mode }: { mode: string }) {
         <h3 style={{ marginTop: 0 }}>Put a gene at the front of the queue</h3>
         <p className="small">Wallets holding {GATE_AMOUNT} {TOKEN_SYMBOL} or more can send the agent a gene to read next, in public, on the live console.</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input className="gene-in" value={gene} onChange={(e) => setGene(e.target.value)} placeholder="e.g. PLCG2" maxLength={16} aria-label="Gene symbol" />
-          <button className="btn eosin" type="button" disabled={busy || !program} onClick={queue}>Sign and queue</button>
+          <input className="gene-in" value={gene} onChange={(e) => setGene(e.target.value)} placeholder="e.g. LRRK2" maxLength={16} aria-label="Gene symbol" />
+          <button className="btn dab" type="button" disabled={busy || !program} onClick={queue}>Sign and queue</button>
         </div>
         {info?.queued.length ? <p className="small quiet" style={{ marginTop: 10 }}>Queued from this wallet: {info.queued.map((q) => `${q.gene}${q.done ? " (read)" : ""}`).join(", ")}.</p> : null}
       </div>

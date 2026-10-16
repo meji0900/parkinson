@@ -10,7 +10,7 @@ export type PredictInput = { gene: string; group: string; axis: string; by?: str
 
 export async function predict(input: PredictInput) {
   if (!isGroup(input.group)) throw new Error("pick one of the atlas cell groups");
-  if (!isAxis(input.axis)) throw new Error("pick braak, thal or resilience");
+  if (!isAxis(input.axis)) throw new Error("pick braak, nigra or resilience");
   const g = await resolveGene(input.gene);
   if (!g) throw new Error(`${input.gene || "that"} is not a human gene symbol on Open Targets`);
   const { exp, repeat } = seal({ gene: g.symbol, group: input.group, axis: input.axis, by: input.by, source: input.source });

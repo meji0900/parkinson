@@ -5,7 +5,7 @@
 import { addReceipt } from "@/lib/agent/receipts";
 import { all, json, nowIso, one, run } from "@/lib/server/db";
 import { hashOf } from "@/lib/server/hash";
-import { AXIS_LABEL, cohorts, GROUPS, seeded, type Axis, type Cohort, type Group } from "./cohort";
+import { AXIS_LABEL, cohorts, GROUPS, RESILIENCE_STAGE, seeded, type Axis, type Cohort, type Group } from "./cohort";
 import { fmtE, fmtP, rankBiserial, residualize, spearman, type Stat } from "./stats";
 
 export const PROTOCOL = 2;
@@ -69,12 +69,13 @@ export function listExperiments(opts: { gene?: string; wallet?: string; limit?: 
 export function axisStat(c: Cohort, values: number[], idx: number[], axis: Axis): Stat {
   const d = c.donors;
   if (axis === "resilience") {
-    const high = idx.filter((i) => d[i].braak >= 5);
-    const resilient = high.filter((i) => !d[i].dementia).map((i) => values[i]);
-    const demented = high.filter((i) => d[i].dementia).map((i) => values[i]);
-    const st = rankBiserial(resilient, demented);
+    // heavy Lewy pathology either way; resilient donors never developed parkinsonism
+    const high = idx.filter((i) => d[i].braak >= RESILIENCE_STAGE);
+    const resilient = high.filter((i) => !d[i].parkinsonism).map((i) => values[i]);
+    const affected = high.filter((i) => d[i].parkinsonism).map((i) => values[i]);
+    const st = rankBiserial(resilient, affected);
     // fewer than three donors on either side cannot show anything; report it as no evidence
-    return Math.min(resilient.length, demented.length) < 3 ? { ...st, p: 1 } : st;
+    return Math.min(resilient.length, affected.length) < 3 ? { ...st, p: 1 } : st;
   }
   return spearman(idx.map((i) => values[i]), idx.map((i) => d[i][axis]));
 }

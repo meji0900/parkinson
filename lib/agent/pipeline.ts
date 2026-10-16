@@ -22,12 +22,12 @@ export type Hooks = {
 };
 
 const NEED: Record<Facet, string> = {
-  genetics: "a genetic association with Alzheimer's",
-  cell: "a clear home in neurons, astrocytes or microglia",
+  genetics: "a genetic association with Parkinson's",
+  cell: "a clear home in dopamine neurons, astrocytes or microglia",
   chem: "a binding pocket or a compound that reaches it",
-  clinic: "no stopped Alzheimer's trials against it",
+  clinic: "no stopped Parkinson's trials against it",
   lit: "ground that has not been worked over",
-  path: "a pathway tied to Alzheimer's biology",
+  path: "a pathway tied to Parkinson's biology",
 };
 
 export const pad = (n: number | null | undefined) => String(n ?? 0).padStart(4, "0");
@@ -156,7 +156,7 @@ async function conclude(
 async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
   const { primary } = cohorts();
   const group = groupForCell(kind);
-  await say({ k: "atlas", x: `sealing two predictions for ${G} in ${group} before reading the atlas${primary.simulated ? " (simulated cohort)" : ""}.` });
+  await say({ k: "atlas", x: `sealing two predictions for ${G} in ${group} of the ${primary.region} before reading the atlas${primary.simulated ? " (simulated cohort)" : ""}.` });
   for (const axis of ["braak", "resilience"] as Axis[]) {
     const { exp, repeat } = seal({ gene: G, group, axis, source: "agent" });
     if (repeat) {

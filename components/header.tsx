@@ -1,24 +1,30 @@
 import Link from "next/link";
-import { BRAND } from "@/lib/brand";
+import { BRAND, MORE, NAV } from "@/lib/brand";
 import { CopyCA } from "./copy-ca";
 import { LivePulse } from "./live";
 import { Mark } from "./mark";
+import { MoreMenu } from "./more-menu";
+
+const KEEP = new Set(["/#live", "/#predict"]);
 
 export function Header() {
   return (
     <header className="top">
-      <Link href="/" className="wordmark" aria-label={`${BRAND.name} home`}>
-        <Mark /> {BRAND.name}
+      <Link href="/" className="brand" aria-label={`${BRAND.name}, home`}>
+        <Mark /> <span>{BRAND.name}</span>
       </Link>
       <LivePulse />
       <nav aria-label="Main">
-        <Link href="/#live" className="keep">Live</Link>
-        <Link href="/#predict">Predict</Link>
-        <Link href="/findings" className="opt">Findings</Link>
-        <Link href="/chain" className="keep">On-chain</Link>
-        <Link href="/report" className="opt">Report</Link>
-        <Link href="/agents" className="opt">Agents</Link>
+        {NAV.map((n) => (
+          <Link key={n.href} href={n.href} className={KEEP.has(n.href) ? "keep" : n.href.startsWith("/#") ? "" : "opt"}>{n.label}</Link>
+        ))}
+        <MoreMenu items={MORE.map((m) => ({ ...m }))} />
         <CopyCA ca={BRAND.ca} />
+        {BRAND.x && (
+          <a className="x" href={`https://x.com/${BRAND.x}`} rel="noopener" target="_blank" aria-label={`${BRAND.name} on X`}>
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-6.3L6.4 22H3.3l7.3-8.3L1 2h6.3l4.4 5.8L18.9 2Zm-1.1 18h1.7L6.3 3.9H4.5L17.8 20Z" /></svg>
+          </a>
+        )}
       </nav>
     </header>
   );
