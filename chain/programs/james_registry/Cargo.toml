@@ -9,7 +9,8 @@ crate-type = ["cdylib", "lib"]
 name = "james_registry"
 
 [features]
-default = []
+# the app builds its own instructions (lib/chain/program.ts), so the on-chain IDL instructions only add deploy rent
+default = ["no-idl"]
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []

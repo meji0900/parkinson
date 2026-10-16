@@ -1,6 +1,6 @@
 // One investigation, start to finish. Every step is emitted as an event, so the same run can stream to
 // a visitor's terminal, feed the live page, or be replayed later from the stored record.
-import { AXIS_LABEL, cohorts, type Axis } from "@/lib/atlas/cohort";
+import { AXIS_LABEL, AXIS_SHORT, cohorts, type Axis } from "@/lib/atlas/cohort";
 import { seal, test, type Experiment } from "@/lib/atlas/experiments";
 import { fmtE, fmtP, type Stat } from "@/lib/atlas/stats";
 import { openCase } from "@/lib/atlas/swarm";
@@ -15,10 +15,10 @@ import { FACET_LABEL, FACETS, SOURCE, THRESHOLD, WEIGHTS, level, type CellKind, 
 
 export type Emit = (e: AgentEvent) => void | Promise<void>;
 export type Hooks = {
-  /** called after a prediction is sealed and before any data is read (the on-chain registration) */
-  onSeal?: (exp: Experiment) => Promise<void>;
-  /** called once the split-half result exists (the on-chain resolution) */
-  onTested?: (exp: Experiment) => Promise<void>;
+  /** called once a gene's predictions are sealed and before any data is read (the on-chain registration) */
+  onSeal?: (exps: Experiment[]) => Promise<void>;
+  /** called once their split-half results exist (the on-chain resolution) */
+  onTested?: (exps: Experiment[]) => Promise<void>;
 };
 
 const NEED: Record<Facet, string> = {
@@ -157,6 +157,7 @@ async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
   const { primary } = cohorts();
   const group = groupForCell(kind);
   await say({ k: "atlas", x: `sealing two predictions for ${G} in ${group} of the ${primary.region} before reading the atlas${primary.simulated ? " (simulated cohort)" : ""}.` });
+  const sealed: { exp: Experiment; axis: Axis }[] = [];
   for (const axis of ["braak", "resilience"] as Axis[]) {
     const { exp, repeat } = seal({ gene: G, group, axis, source: "agent" });
     if (repeat) {
@@ -164,10 +165,15 @@ async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
       continue;
     }
     await say({ k: "register", x: `sealed ${exp.registration.slice(0, 16)}: ${G} ${AXIS_LABEL[axis]} in ${group}` });
-    await opts.hooks?.onSeal?.(exp).catch(() => undefined);
+    sealed.push({ exp, axis });
+  }
+  // both seals share one transaction, and both results the next: the fee is per signature, not per memo
+  await opts.hooks?.onSeal?.(sealed.map((s) => s.exp)).catch(() => undefined);
+  const tested: Experiment[] = [];
+  for (const { exp, axis } of sealed) {
     const t = test(exp.registration);
-    await say({ k: "test", x: `discovery half ${fmtStat(t.discovery)} → held-out half ${fmtStat(t.replication)}` });
-    await opts.hooks?.onTested?.(t).catch(() => undefined);
+    tested.push(t);
+    await say({ k: "test", x: `${AXIS_SHORT[axis]}: discovery half ${fmtStat(t.discovery)} → held-out half ${fmtStat(t.replication)}` });
     if (t.passed) {
       await say({ k: "pass", x: `${G} in ${group} ${AXIS_LABEL[axis]}: held in both halves.` });
       continue;
@@ -180,6 +186,7 @@ async function atlasStep(G: string, kind: CellKind, opts: Options, say: Say) {
       await say({ k: "swarm", fac: "swarm", x: sc.outcome });
     }
   }
+  await opts.hooks?.onTested?.(tested).catch(() => undefined);
 }
 
 // ---------------------------------------------------------------- stored runs

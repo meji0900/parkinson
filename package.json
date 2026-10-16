@@ -11,8 +11,9 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "chain:build": "cd chain && cargo-build-sbf --manifest-path programs/james_registry/Cargo.toml --sbf-out-dir target/deploy",
-    "chain:deploy": "solana program deploy chain/target/deploy/james_registry.so --program-id .keys/james_registry-keypair.json --url devnet",
+    "chain:deploy": "solana program deploy chain/target/deploy/james_registry.so --program-id .keys/james_registry-keypair.json --keypair .keys/agent.json --url devnet",
     "chain:init": "node scripts/chain-init.mjs",
+    "chain:e2e": "node scripts/chain-e2e.mjs",
     "agent:key": "solana-keygen new --no-bip39-passphrase -o .keys/agent.json",
     "agent:address": "solana-keygen pubkey .keys/agent.json"
   },

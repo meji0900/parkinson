@@ -38,4 +38,6 @@ next-env.d.ts
 /data/*.db-*
 /.keys/
 /chain/target/*
+/chain/tests-svm/target/
+/chain/tests-svm/accounts.json
 !/chain/target/idl/

@@ -49,38 +49,53 @@ export async function send(ixs: TransactionInstruction[], signers: Keypair[]): P
 const memo = (text: string) => new TransactionInstruction({ programId: MEMO_PROGRAM_ID, keys: [], data: Buffer.from(text, "utf8") });
 
 // ---------------------------------------------------------------- agent and anonymous predictions (memo)
-export async function sealOnChain(exp: Experiment): Promise<void> {
+// Predictions sealed together share a transaction, one memo each: the fee is per signature, so a gene's two
+// predictions cost one fee to seal and one to resolve.
+export async function sealOnChain(exps: Experiment | Experiment[]): Promise<void> {
   const agent = agentKeypair();
-  if ((await chainMode()) === "off" || !agent || exp.chain_tx) return;
+  const todo = [exps].flat().filter((e) => !e.chain_tx);
+  if (!todo.length || (await chainMode()) === "off" || !agent) return;
   try {
-    const sig = await send([memo(`james:seal:v${exp.protocol}:${exp.registration}`)], [agent]);
-    run("update experiments set chain_tx = ?, chain_status = 'memo-sealed' where registration = ?", sig, exp.registration);
-  } catch (e) {
-    run("update experiments set chain_status = ? where registration = ?", "seal-failed: " + short(e), exp.registration);
+    const sig = await send(todo.map((e) => memo(`james:seal:v${e.protocol}:${e.registration}`)), [agent]);
+    for (const e of todo) run("update experiments set chain_tx = ?, chain_status = 'memo-sealed' where registration = ?", sig, e.registration);
+  } catch (err) {
+    for (const e of todo) run("update experiments set chain_status = ? where registration = ?", "seal-failed: " + short(err), e.registration);
   }
 }
 
-export async function resolveOnChain(exp: Experiment): Promise<void> {
+export async function resolveOnChain(exps: Experiment | Experiment[]): Promise<void> {
   const agent = agentKeypair();
   const mode = await chainMode();
-  const x = getExperiment(exp.registration);
-  if (mode === "off" || !agent || !x?.chain_tx || x.resolve_tx || x.state !== "tested") return;
-  const effD = x.discovery?.effect ?? 0, effR = x.replication?.effect ?? 0;
+  if (mode === "off" || !agent) return;
+  const ready = [exps].flat().map((e) => getExperiment(e.registration)).filter((x): x is Experiment => !!x?.chain_tx && !x.resolve_tx && x.state === "tested");
+  const memos: Experiment[] = [];
+  for (const x of ready) {
+    if (x.chain_status === "sealed" && mode === "program") await resolveAccount(x, agent);
+    else memos.push(x);
+  }
+  if (!memos.length) return;
+  const line = (x: Experiment) =>
+    `james:result:${x.registration}:${x.passed ? 1 : 0}:${(x.discovery?.effect ?? 0).toFixed(3)}:${(x.replication?.effect ?? 0).toFixed(3)}:${x.receipt ?? 0}`;
   try {
-    if (x.chain_status === "sealed" && mode === "program") {
-      const hash = Buffer.from(x.registration, "hex");
-      const sig = await send([resolveIx(hash, !!x.passed, effD, effR, x.receipt ?? 0, agent.publicKey)], [agent]);
-      run("update experiments set resolve_tx = ?, chain_status = 'resolved' where registration = ?", sig, x.registration);
-      if (x.passed && x.wallet && x.wallet !== agent.publicKey.toBase58()) {
-        const r = await send([rewardIx(hash, new PublicKey(x.wallet), agent.publicKey)], [agent]);
-        run("update experiments set reward_tx = ?, chain_status = 'rewarded' where registration = ?", r, x.registration);
-      }
-    } else {
-      const sig = await send([memo(`james:result:${x.registration}:${x.passed ? 1 : 0}:${effD.toFixed(3)}:${effR.toFixed(3)}:${x.receipt ?? 0}`)], [agent]);
-      run("update experiments set resolve_tx = ?, chain_status = 'memo-resolved' where registration = ?", sig, x.registration);
+    const sig = await send(memos.map((x) => memo(line(x))), [agent]);
+    for (const x of memos) run("update experiments set resolve_tx = ?, chain_status = 'memo-resolved' where registration = ?", sig, x.registration);
+  } catch (err) {
+    for (const x of memos) run("update experiments set chain_status = ? where registration = ?", "resolve-failed: " + short(err), x.registration);
+  }
+}
+
+/** a wallet prediction lives in its own program account: the result is written there, and a replicated one is rewarded */
+async function resolveAccount(x: Experiment, agent: Keypair): Promise<void> {
+  const hash = Buffer.from(x.registration, "hex");
+  try {
+    const sig = await send([resolveIx(hash, !!x.passed, x.discovery?.effect ?? 0, x.replication?.effect ?? 0, x.receipt ?? 0, agent.publicKey)], [agent]);
+    run("update experiments set resolve_tx = ?, chain_status = 'resolved' where registration = ?", sig, x.registration);
+    if (x.passed && x.wallet && x.wallet !== agent.publicKey.toBase58()) {
+      const r = await send([rewardIx(hash, new PublicKey(x.wallet), agent.publicKey)], [agent]);
+      run("update experiments set reward_tx = ?, chain_status = 'rewarded' where registration = ?", r, x.registration);
     }
-  } catch (e) {
-    run("update experiments set chain_status = ? where registration = ?", "resolve-failed: " + short(e), x.registration);
+  } catch (err) {
+    run("update experiments set chain_status = ? where registration = ?", "resolve-failed: " + short(err), x.registration);
   }
 }
 

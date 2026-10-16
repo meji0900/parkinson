@@ -957,19 +957,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "engram-tests-svm"
-version = "0.1.0"
-dependencies = [
- "litesvm",
- "serde_json",
- "solana-address 2.7.0",
- "solana-instruction 3.5.1",
- "solana-keypair",
- "solana-signer",
- "solana-transaction",
-]
-
-[[package]]
 name = "enum-iterator"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1285,6 +1272,19 @@ name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+
+[[package]]
+name = "james-tests-svm"
+version = "0.1.0"
+dependencies = [
+ "litesvm",
+ "serde_json",
+ "solana-address 2.7.0",
+ "solana-instruction 3.5.1",
+ "solana-keypair",
+ "solana-signer",
+ "solana-transaction",
+]
 
 [[package]]
 name = "k256"
