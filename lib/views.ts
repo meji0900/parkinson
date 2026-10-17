@@ -28,6 +28,7 @@ export function atlasInfo() {
   const stage = primary.resilienceStage;
   return {
     state: "done",
+    id: primary.id,
     simulated: primary.simulated,
     label: primary.label,
     region: primary.region,

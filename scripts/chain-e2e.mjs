@@ -13,11 +13,13 @@ const RPC = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID ?? "CfMeJtdS8jajhhFkNiguhLa3tjXBZdSJoKB3teWkxuYb");
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ATA_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-const COHORT = process.env.COHORT ?? "sim-snpc-v2";
+// the atlas the server tests on; registrations hash its id, so a prediction sent straight to the program must use it
+const COHORT = process.env.COHORT ?? (await fetch(BASE + "/api/atlas").then((r) => r.json()).catch(() => ({}))).id ?? "sim-snpc-v2";
 const GROUPS = ["dopamine neurons", "GABA neurons", "glutamate neurons", "microglia", "astrocytes", "oligodendrocytes", "OPCs", "endothelial"];
 const AXES = ["braak", "nigra", "resilience"];
-// held in both donor halves on the simulated cohort, so the wallet path reaches "replicated" and the reward
-const HOLDS = ["SLC6A3", "PACRG", "NR1H2", "MASTL"].map((gene) => ({ gene, group: "dopamine neurons", axis: "braak" }));
+// candidates for the wallet prediction; they held in both halves of the simulated cohort, so there the reward path runs.
+// On a real atlas few predictions hold, and the reward step is then skipped with a note rather than failed.
+const HOLDS = ["SLC6A3", "PACRG", "NR1H2", "MASTL", "TH", "KCNJ6", "DDC", "ALDH1A1"].map((gene) => ({ gene, group: "dopamine neurons", axis: "braak" }));
 
 const keyFile = process.env.AGENT_KEYPAIR_PATH ?? path.join(process.cwd(), ".keys", "agent.json");
 const kp = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(keyFile, "utf8"))));
@@ -133,7 +135,7 @@ await step("wallet prediction: prepared by the server, signed by the wallet, reg
 });
 
 await step("the predictor of a replicated prediction is rewarded (one wallet: sent directly, the server skips self-rewards)", async () => {
-  need(held?.passed, "the wallet prediction did not replicate, so there is nothing to reward");
+  if (!held?.passed) return { note: "skipped: the wallet prediction did not hold on this atlas, so there is nothing to reward" };
   const hash = Buffer.from(held.registration, "hex");
   const before = await tokens();
   const sig = await send([new TransactionInstruction({
