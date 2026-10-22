@@ -366,8 +366,8 @@ export class NeuronField {
       const live = this.neurons.filter((n) => this.visible(n) && n.sick < 0.9);
       if (this.running && live.length) this.fire(live[Math.floor(Math.random() * live.length)], this.clock);
     };
-    on("james:pulse" as keyof WindowEventMap, pulse as never);
-    on("james:reset" as keyof WindowEventMap, (() => this.reset()) as never);
+    on("parkinson:pulse" as keyof WindowEventMap, pulse as never);
+    on("parkinson:reset" as keyof WindowEventMap, (() => this.reset()) as never);
     const vis = () => (document.hidden ? this.stop() : this.start());
     document.addEventListener("visibilitychange", vis);
     this.cleanup.push(() => document.removeEventListener("visibilitychange", vis));

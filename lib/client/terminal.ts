@@ -1,5 +1,7 @@
 // The console's engine: types the agent's events into a scrolling element. Imperative on purpose:
 // a character-by-character type-out through React state would re-render hundreds of times a second.
+import { BRAND } from "@/lib/brand";
+
 export type Part = [string, string?];
 export type Ev = { k: string; x: string; fac?: string; gene?: string | null; [extra: string]: unknown };
 export type Hooks = {
@@ -12,11 +14,13 @@ const FAC: Record<string, string> = { genetics: "genetics", cell: "cell type", c
 const ORDER = ["genetics", "cell", "chem", "clinic", "lit", "path"];
 const num = (x: unknown) => { const v = Number(x || 0); return (Math.abs(v) < 0.005 ? 0 : v).toFixed(2); };
 
+// the hub is as wide as the name under it
+const HUB = BRAND.name.length + 4, LEFT = Math.floor((HUB - 3) / 2);
 export const BANNER = [
   "",
-  "     genetics ─╮          ╭─ trials",
-  "    cell type ─┼── ◉ ─────┼─ literature",
-  "    chemistry ─╯  james   ╰─ pathways",
+  `     genetics ─╮${" ".repeat(HUB)}╭─ trials`,
+  `    cell type ─┼${"─".repeat(LEFT)} ◉ ${"─".repeat(HUB - 3 - LEFT)}┼─ literature`,
+  `    chemistry ─╯  ${BRAND.name}  ╰─ pathways`,
   "",
 ];
 
@@ -56,7 +60,7 @@ export class Terminal {
   }
 
   line = (text: string, id: number, cls = "dim") => this.type([[text, cls]], id, 0);
-  say = (text: string, id: number, cls = "", speed = 9) => this.type([["<james> ", "tag"], [text, cls]], id, speed);
+  say = (text: string, id: number, cls = "", speed = 9) => this.type([[`<${BRAND.name}> `, "tag"], [text, cls]], id, speed);
 
   async banner(id: number) {
     for (const l of BANNER) await this.type([[l]], id, 2, "art");
@@ -76,7 +80,7 @@ export class Terminal {
       case "wake": {
         const g = e.gene ?? (e.x.match(/subject: ([^.]+)/) ?? [])[1] ?? "";
         if (g) this.hooks.onGene?.(g);
-        await this.type([["james@bench:~$ ", "dim"], [`investigate ${g}`, "hi"]], id, 0);
+        await this.type([[`${BRAND.name}@bench:~$ `, "dim"], [`investigate ${g}`, "hi"]], id, 0);
         return this.say(e.x.split(". ").slice(1).join(". "), id);
       }
       case "src": return this.type([["   " + e.x, "dim"]], id, 4);

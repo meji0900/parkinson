@@ -3,6 +3,7 @@
 // if the server ever edited one, this page would say so.
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
+import { BRAND } from "@/lib/brand";
 import { canon } from "@/lib/canon";
 
 export type Tried = { reader: string; source?: string; score?: string; level?: string; result?: string };
@@ -35,7 +36,7 @@ export function Slip({ r, ok, link = true }: { r: Receipt; ok?: boolean; link?: 
   return (
     <li className="slip">
       <p className="slip-head">
-        <b>JAMES RECEIPT</b>
+        <b>{BRAND.name.toUpperCase()} RECEIPT</b>
         {link ? <Link href={`/receipt/${r.no}`}>no. {pad(r.no)}</Link> : <span>no. {pad(r.no)}</span>}
         <br />{when(r.at)}
       </p>
@@ -79,8 +80,8 @@ export function ReceiptStrip({ gene, limit = 12 }: { gene?: string; limit?: numb
       } catch { /* keep what is shown */ }
     };
     load();
-    window.addEventListener("james:receipts", load);
-    return () => window.removeEventListener("james:receipts", load);
+    window.addEventListener("parkinson:receipts", load);
+    return () => window.removeEventListener("parkinson:receipts", load);
   }, [gene, limit]);
   if (!data) return <p className="chain">loading the receipts</p>;
   if (!data.receipts.length) return <p className="chain">No receipts yet. The first failure will print one here.</p>;

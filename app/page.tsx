@@ -15,6 +15,8 @@ import { listExperiments } from "@/lib/atlas/experiments";
 import { openWindows, scoreboard } from "@/lib/atlas/forecasts";
 import { listStudies, runnable, STUDIES } from "@/lib/atlas/studies";
 import { listCases } from "@/lib/atlas/swarm";
+import { BRAND } from "@/lib/brand";
+import { CHAIN } from "@/lib/chain/config";
 import { chainMode } from "@/lib/chain/oracle";
 import { one } from "@/lib/server/db";
 import { agentInterval } from "@/lib/server/events";
@@ -101,7 +103,7 @@ export default async function Home() {
 
       <Sec id="predict" title="Make a prediction">
         <p>
-          Pick a gene, a cell type and an outcome. james hashes your prediction before reading any data, tests it on half of the {atlas.donors}{" "}
+          Pick a gene, a cell type and an outcome. {BRAND.name} hashes your prediction before reading any data, tests it on half of the {atlas.donors}{" "}
           donors, then checks it on the other half, the same way it tests its own. If it fails, the receipt carries your name. Each prediction
           is registered once: if someone got there first, you get their result.
         </p>
@@ -247,10 +249,10 @@ export default async function Home() {
 
       <Sec id="chain" title="On-chain">
         <p>
-          Before a prediction is tested, its hash can go on-chain. Predictions you sign with a wallet get their own account in the registry
-          program on Solana devnet; the agent writes the split-half result back, and a prediction that replicates mints test tokens to the wallet
-          that made it. Holders can put a gene at the front of the agent&apos;s queue.{" "}
-          {mode === "off" ? "On-chain writes are off on this server." : mode === "memo" ? "On this server seals and results are written as memo transactions." : "The registry program is live."}
+          Before a prediction is tested, its hash can go on-chain. Predictions you sign with a wallet are stored in the registry contract on{" "}
+          {CHAIN.name}, an Ethereum L2; the agent pays the gas, writes the split-half result back, and a prediction that replicates can earn
+          the wallet that made it a reward. Holders can put a gene at the front of the agent&apos;s queue.{" "}
+          {mode === "off" ? "On-chain writes are off on this server." : mode === "memo" ? "On this server seals and results are written as memo transactions." : "The registry contract is live."}
         </p>
         <p><Link className="btn line" href="/chain">Open the registry</Link></p>
       </Sec>

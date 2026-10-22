@@ -33,14 +33,16 @@ next-env.d.ts
 !.vscode/extensions.json
 .idea
 
-# engram: local ledgers and keys never leave the machine
+# local ledgers and keys never leave the machine
 /data/*.db
 /data/*.db-*
 /.keys/
-/chain/target/*
-/chain/tests-svm/target/
-/chain/tests-svm/accounts.json
-!/chain/target/idl/
+# contracts: build output and Foundry run logs (the cache holds the RPC URLs a run used)
+/contracts/out/
+/contracts/cache/
+/contracts/broadcast/
+# the Solana build output from before the move to Robinhood Chain (safe to delete)
+/chain/
 
 # python
 __pycache__/

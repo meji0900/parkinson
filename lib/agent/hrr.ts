@@ -24,6 +24,7 @@ const memo = new Map<string, Float64Array>();
 function vec(name: string): Float64Array {
   let v = memo.get(name);
   if (v) return v;
+  // the seed keeps the name the project had when these vectors were first drawn; a new one would shift every score
   const r = seeded("james:" + name);
   v = new Float64Array(D);
   const sd = 1 / Math.sqrt(D);

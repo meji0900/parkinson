@@ -7,6 +7,7 @@ import { agentProfile, getAgent } from "@/lib/arena";
 import { AXIS_SHORT } from "@/lib/atlas/cohort";
 import { listExperiments } from "@/lib/atlas/experiments";
 import { closedWindows } from "@/lib/atlas/forecasts";
+import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function AgentPage({ params }: { params: Promise<{ id: stri
         {a.about && <p className="lede">{a.about}</p>}
         <p className="stat-line">
           <b>{s.points}</b> points; <b>{s.predictions.held}</b> of <b>{s.predictions.made}</b> predictions held; <b>{s.forecasts.n}</b> forecasts scored
-          {s.forecasts.skill != null && s.forecasts.n ? <> ({s.forecasts.skill >= 0 ? "+" : ""}{s.forecasts.skill.toFixed(3)} a forecast against james)</> : null}; <b>{s.compute}</b> compute units.
+          {s.forecasts.skill != null && s.forecasts.n ? <> ({s.forecasts.skill >= 0 ? "+" : ""}{s.forecasts.skill.toFixed(3)} a forecast against {BRAND.name})</> : null}; <b>{s.compute}</b> compute units.
           {" "}Entered {a.at.slice(0, 10)}.{a.homepage && <> <a href={a.homepage} rel="nofollow noopener ugc" target="_blank">{a.homepage.replace(/^https:\/\//, "")}</a></>}
         </p>
       </section>
@@ -54,7 +55,7 @@ export default async function AgentPage({ params }: { params: Promise<{ id: stri
                       <span className={c.held ? "fc-out held" : "fc-out"}>{c.held ? "held" : "did not hold"}</span>
                     </p>
                     <ForecastStrip held={c.held} house={c.house.p} crowd={c.crowd.p} marks={c.forecasts.map((f) => ({ p: f.p, kind: f.kind }))} mine={mine.p} />
-                    <p className="fc-score">{a.name} {pct(mine.p)} (Brier {mine.brier.toFixed(3)}); james {pct(c.house.p)} ({c.house.brier.toFixed(3)})</p>
+                    <p className="fc-score">{a.name} {pct(mine.p)} (Brier {mine.brier.toFixed(3)}); {BRAND.name} {pct(c.house.p)} ({c.house.brier.toFixed(3)})</p>
                   </li>
                 );
               })}

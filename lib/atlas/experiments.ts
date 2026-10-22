@@ -39,6 +39,8 @@ export type Experiment = {
   resolve_tx: string | null;
   reward_tx: string | null;
   chain_status: string | null;
+  /** the id of the chain its on-chain records went to */
+  chain: string | null;
   /** the registered arena agent that made it, if any */
   agent: string | null;
 };

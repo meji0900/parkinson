@@ -1,4 +1,4 @@
-"""Build james's real atlases from two public single-nucleus datasets of the human substantia nigra.
+"""Build the agent's real atlases from two public single-nucleus datasets of the human substantia nigra.
 
   volpato  Volpato et al. 2025 (medRxiv), GEO GSE329625: full-length (SMART-Seq, ICELL8) nuclei from the ventral SNpc of
            20 donors: 7 controls, 4 with incidental Lewy body disease (Braak 1-2 and 3-4) and 9 with Parkinson's (Braak 3-4

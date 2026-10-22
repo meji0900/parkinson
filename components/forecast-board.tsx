@@ -4,6 +4,7 @@
 // The agent's revealed forecasts are checked against their seals here, in the browser.
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BRAND } from "@/lib/brand";
 import { canon } from "@/lib/canon";
 import type { ClosedWindow, OpenWindow } from "@/lib/atlas/forecasts";
 import { ForecastStrip, StripLegend } from "./forecast-strip";
@@ -19,9 +20,16 @@ export type BoardData = {
 type Labels = Record<string, { long: string; short: string }>;
 type Me = { token: string; name: string; who: string | null; mine: Record<string, number> };
 
-const K = { token: "james-forecaster", name: "james-forecaster-name", who: "james-forecaster-who", mine: "james-forecasts" };
+const K = { token: "parkinson-forecaster", name: "parkinson-forecaster-name", who: "parkinson-forecaster-who", mine: "parkinson-forecasts" };
 const store = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode: forget on reload */ } };
-const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+// the keys were "james-…" before the rename; a returning forecaster's token and forecasts move over on first read
+const read = (k: string) => {
+  try {
+    const v = localStorage.getItem(k) ?? localStorage.getItem(k.replace("parkinson-", "james-"));
+    if (v != null) localStorage.setItem(k, v);
+    return v;
+  } catch { return null; }
+};
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, "0")).join("");
 const pct = (p: number | null | undefined) => (p == null ? "n/a" : `${Math.round(p * 100)}%`);
 const mmss = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -135,7 +143,7 @@ export function ForecastBoard({ initial, labels }: { initial: BoardData; labels:
                         <span className="fc-time" aria-live="off">{closing ? "closed; testing now" : `closes in ${mmss(left)}`}</span>
                       </div>
                       <p className="fc-claim">{w.gene} in {w.group} {labels[w.axis]?.long ?? w.axis}</p>
-                      <p className="fc-meta">sealed {w.registration.slice(0, 12)}…; james&apos;s forecast sealed as {w.commit.slice(0, 10)}…; {w.forecasts} {w.forecasts === 1 ? "forecast" : "forecasts"} in</p>
+                      <p className="fc-meta">sealed {w.registration.slice(0, 12)}…; {BRAND.name}&apos;s forecast sealed as {w.commit.slice(0, 10)}…; {w.forecasts} {w.forecasts === 1 ? "forecast" : "forecasts"} in</p>
                       <div className="fc-dial">
                         <label htmlFor={`d-${w.registration}`}>chance it holds</label>
                         <input
@@ -166,7 +174,7 @@ export function ForecastBoard({ initial, labels }: { initial: BoardData; labels:
         {myRow && (
           <p className="stat-line">
             You: <b>{myRow.n}</b> scored, Brier <b>{myRow.brier.toFixed(3)}</b>,{" "}
-            {myRow.skill >= 0 ? <>ahead of james by <b>{myRow.skill.toFixed(3)}</b></> : <>behind james by <b>{(-myRow.skill).toFixed(3)}</b></>} a forecast.
+            {myRow.skill >= 0 ? <>ahead of {BRAND.name} by <b>{myRow.skill.toFixed(3)}</b></> : <>behind {BRAND.name} by <b>{(-myRow.skill).toFixed(3)}</b></>} a forecast.
           </p>
         )}
         <StripLegend />
@@ -187,7 +195,7 @@ export function ForecastBoard({ initial, labels }: { initial: BoardData; labels:
                   </p>
                   <ForecastStrip held={c.held} house={c.house.p} crowd={c.crowd.p} marks={c.forecasts.map((f) => ({ p: f.p, kind: f.kind }))} mine={mine?.p ?? null} />
                   <p className="fc-score">
-                    james {pct(c.house.p)} (Brier {c.house.brier.toFixed(3)}
+                    {BRAND.name} {pct(c.house.p)} (Brier {c.house.brier.toFixed(3)}
                     {seal === undefined ? ", checking the seal" : seal ? ", seal checks out" : ", SEAL DOES NOT MATCH"})
                     {c.crowd.p != null && <>; crowd of {c.crowd.n} {pct(c.crowd.p)} ({c.crowd.brier!.toFixed(3)})</>}
                     {mine && <>; you {pct(mine.p)} ({mine.brier.toFixed(3)})</>}

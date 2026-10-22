@@ -28,7 +28,7 @@ export function Bench({ genes, receipts, tested, held, simulated }: { genes: num
       </dl>
       <div className="bench-foot">
         {simulated ? <span className="badge">atlas: simulated cohort</span> : <span />}
-        <button type="button" className="reset" onClick={() => window.dispatchEvent(new Event("james:reset"))}>regrow the cells</button>
+        <button type="button" className="reset" onClick={() => window.dispatchEvent(new Event("parkinson:reset"))}>regrow the cells</button>
       </div>
     </aside>
   );

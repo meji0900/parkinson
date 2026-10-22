@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BRAND } from "@/lib/brand";
 
-const KEY = "james-gate-seen";
+const KEY = "parkinson-gate-seen";
 const INK = "#141b26", PEN = "#8b5a2b";
 const EARLY = `try{if(sessionStorage.getItem("${KEY}")==="1")document.documentElement.dataset.gate="seen"}catch(e){}`;
 

@@ -1,7 +1,7 @@
 // Fixed-window counters per key, kept in memory (enough for one server process).
 type Window = { start: number; n: number };
-const g = globalThis as unknown as { __jamesRate?: Map<string, Window> };
-const windows = (g.__jamesRate ??= new Map());
+const g = globalThis as unknown as { __parkinsonRate?: Map<string, Window> };
+const windows = (g.__parkinsonRate ??= new Map());
 
 export function limit(key: string, max: number, windowMs: number): { ok: boolean; retryIn: number } {
   const now = Date.now();

@@ -64,8 +64,8 @@ function readings(c: Cohort, values: number[], idx: number[], axis: Axis, nextN:
 }
 
 // ---------------------------------------------------------------- the tasks, rebuilt from the ledgers
-const g = globalThis as unknown as { __jamesGym?: Map<string, Task | null> };
-const memo = (g.__jamesGym ??= new Map());
+const g = globalThis as unknown as { __parkinsonGym?: Map<string, Task | null> };
+const memo = (g.__parkinsonGym ??= new Map());
 
 export function replicationTasks(): Task[] {
   const { primary: c } = cohorts();

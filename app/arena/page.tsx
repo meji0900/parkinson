@@ -23,7 +23,7 @@ function Row({ s, rank }: { s: Standing; rank: number | null }) {
     <li className={s.house ? "st-row baseline" : "st-row"}>
       <span className="st-rank">{rank ?? "base"}</span>
       <div className="st-who">
-        {s.house ? <b>james</b> : <Link href={`/arena/${s.id}`}><b>{s.name}</b></Link>}
+        {s.house ? <b>{BRAND.name}</b> : <Link href={`/arena/${s.id}`}><b>{s.name}</b></Link>}
         {s.about && <span className="sub">{s.about}</span>}
       </div>
       <div className="st-held">
@@ -33,7 +33,7 @@ function Row({ s, rank }: { s: Standing; rank: number | null }) {
       </div>
       <div className="st-fc">
         <span className="st-k">forecasts, Brier</span>
-        {s.forecasts.n ? <><b className="m">{f3(s.forecasts.brier)}</b><span className="sub">{s.house ? `${s.forecasts.n} sealed` : `${signed(s.forecasts.skill)} vs james, ${s.forecasts.n}`}</span></> : <span className="m quiet">none</span>}
+        {s.forecasts.n ? <><b className="m">{f3(s.forecasts.brier)}</b><span className="sub">{s.house ? `${s.forecasts.n} sealed` : `${signed(s.forecasts.skill)} vs ${BRAND.name}, ${s.forecasts.n}`}</span></> : <span className="m quiet">none</span>}
       </div>
       <div className="st-cu"><span className="st-k">compute</span><b className="m">{s.compute}</b></div>
       <div className="st-pts"><span className="st-k">points</span><b className="m">{s.points}</b></div>
@@ -79,7 +79,7 @@ export default function ArenaPage() {
               <div className="st-held"><span className="st-k">predictions held</span><span className="quiet small">forecasts only</span></div>
               <div className="st-fc">
                 <span className="st-k">forecasts, Brier</span>
-                {st.crowd.n ? <><b className="m">{f3(st.crowd.brier)}</b><span className="sub">{signed(st.crowd.skill)} vs james, {st.crowd.n}</span></> : <span className="m quiet">none</span>}
+                {st.crowd.n ? <><b className="m">{f3(st.crowd.brier)}</b><span className="sub">{signed(st.crowd.skill)} vs {BRAND.name}, {st.crowd.n}</span></> : <span className="m quiet">none</span>}
               </div>
               <div className="st-cu"><span className="st-k">compute</span><b className="m">0</b></div>
               <div className="st-pts"><span className="st-k">points</span><span className="m quiet">n/a</span></div>
@@ -113,13 +113,13 @@ prediction about a Parkinson's gene in the cell group you think it acts in.`}</p
             `  and it survives the cell mix     +${POINTS.mix}`,
             `  and holds in ${confirmation().short.padEnd(17)}+${POINTS.second}`,
             `verified compute unit               ${POINTS.unit} point`,
-            `forecasts                           ${POINTS.forecast} x (james's Brier - yours), summed`,
+            `forecasts                           ${POINTS.forecast} x (${BRAND.name}'s Brier - yours), summed`,
           ].join("\n")}</pre>
           <ul className="limits">
             <li>A prediction can be registered once. Whoever seals a gene, cell group and outcome first owns its result; a repeat gets the recorded result and no credit.</li>
-            <li>Forecasts are scored against what happened and against james&apos;s sealed forecast on the same prediction, so guessing high on everything loses points: most predictions fail.</li>
+            <li>Forecasts are scored against what happened and against {BRAND.name}&apos;s sealed forecast on the same prediction, so guessing high on everything loses points: most predictions fail.</li>
             <li>Compute counts only if the server&apos;s own recount matches exactly.</li>
-            <li>james and the crowd are shown as baselines and are not ranked.</li>
+            <li>{BRAND.name} and the crowd are shown as baselines and are not ranked.</li>
             <li>Names are public. Keys are stored only as hashes and cannot be recovered; a lost key means registering again under a new name.</li>
           </ul>
         </Sec>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AXIS_LABEL, cohorts } from "@/lib/atlas/cohort";
 import { RANDOM_SETS, listStudies, registrationOfStudy, runnable, STUDIES, type Study, type StudyDef } from "@/lib/atlas/studies";
 import { fmtE, fmtP } from "@/lib/atlas/stats";
+import { BRAND } from "@/lib/brand";
 import { REFS, refHref } from "@/lib/sources";
 
 export const dynamic = "force-dynamic";
@@ -96,7 +97,7 @@ export default function ProgramPage() {
       <article className="paper">
         <p className="kicker">Sealed studies, read live from the ledger{primary.simulated ? ", on a simulated cohort" : ""}</p>
         <h1>The lysosome program: do the lysosomal Parkinson&apos;s genes give way inside the dopamine neurons that carry Lewy bodies?</h1>
-        <p className="byline">james and the people running it, on the {primary.label}</p>
+        <p className="byline">{BRAND.name} and the people running it, on the {primary.label}</p>
 
         <h2>Abstract</h2>
         <div className="abstract">

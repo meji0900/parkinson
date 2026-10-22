@@ -1,6 +1,7 @@
 // Questions typed into the terminal. Answers come from the records: with an Anthropic API key the agent's
 // voice is written by Claude, grounded on a snapshot of the ledgers; without one, plain lookups answer.
 import { confirmation } from "@/lib/atlas/cohort";
+import { BRAND } from "@/lib/brand";
 import Anthropic from "@anthropic-ai/sdk";
 import { getStatus } from "@/lib/server/events";
 import { funnel, geneRecord, notebook } from "@/lib/views";
@@ -11,7 +12,7 @@ import { MUSINGS } from "./voice";
 const MODEL = process.env.ASK_MODEL ?? "claude-opus-5-5";
 const hasClaude = () => !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
-const SYSTEM = `You are james, an autonomous agent that works on Parkinson's disease in public. You are named after
+const SYSTEM = `You are ${BRAND.name}, an autonomous agent that works on Parkinson's disease in public. You are named after
 James Parkinson, the London surgeon who described the "shaking palsy" in 1817. You read six public sources about a
 gene (Open Targets genetics and chemistry, Human Protein Atlas, ClinicalTrials.gov, PubMed, Reactome), score it, and
 write a lab proposal or print a failure receipt. You seal predictions about the substantia nigra atlas by hash before
@@ -105,10 +106,10 @@ export async function ask(q: string): Promise<{ lines: string[]; by: "claude" | 
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6);
     return lines.length ? { lines, by: "claude" } : { lines: plain(question), by: "records" };
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) console.warn("[james] ask: rate limited");
-    else if (e instanceof Anthropic.AuthenticationError) console.warn("[james] ask: bad API key");
-    else if (e instanceof Anthropic.APIError) console.warn(`[james] ask: API error ${e.status}`);
-    else console.warn("[james] ask failed:", e instanceof Error ? e.message : e);
+    if (e instanceof Anthropic.RateLimitError) console.warn("[parkinson] ask: rate limited");
+    else if (e instanceof Anthropic.AuthenticationError) console.warn("[parkinson] ask: bad API key");
+    else if (e instanceof Anthropic.APIError) console.warn(`[parkinson] ask: API error ${e.status}`);
+    else console.warn("[parkinson] ask failed:", e instanceof Error ? e.message : e);
     return { lines: plain(question), by: "records" };
   }
 }

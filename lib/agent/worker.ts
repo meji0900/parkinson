@@ -2,7 +2,7 @@
 // first, then the Open Targets Parkinson's pool, best-scored first) and works it in public. Sealed studies
 // queued in lib/atlas/studies.ts run between genes. At 02:30 UTC it runs the night's top 80 and keeps the
 // best 12 in the notebook.
-import { anchorReceipts, chainMode, resolveOnChain, sealOnChain, syncOnchainPredictions } from "@/lib/chain/oracle";
+import { anchorReceipts, chainMode, resolveOnChain, retryResults, sealOnChain, syncOnchainPredictions } from "@/lib/chain/oracle";
 import { all, kvGet, kvSet, nowIso, one, run } from "@/lib/server/db";
 import { agentInterval, getStatus, pushEvent, setStatus } from "@/lib/server/events";
 import { getJSON } from "@/lib/server/http";
@@ -126,7 +126,7 @@ export async function closeWindows(pace = PACE) {
     appendRunEvents(exp.gene, events);
     tested.push(exp);
   }
-  await resolveOnChain(tested).catch((e) => console.error("[james] resolve", e?.message ?? e));
+  await resolveOnChain(tested).catch((e) => console.error("[parkinson] resolve", e?.message ?? e));
   setStatus({ ...before });
   return tested.length;
 }
@@ -155,7 +155,7 @@ export async function nightly(): Promise<void> {
 }
 
 // ---------------------------------------------------------------- the loop
-const g = globalThis as unknown as { __jamesWorker?: { started: boolean; busy: boolean; lastChore: number; lastSay: number } };
+const g = globalThis as unknown as { __parkinsonWorker?: { started: boolean; busy: boolean; lastChore: number; lastSay: number } };
 
 async function chores() {
   // the gym seals its tuned analyst weights once, as soon as there is enough to fit them on
@@ -163,15 +163,16 @@ async function chores() {
     const seal = sealGymIfReady();
     if (seal) pushEvent({ gene: null, k: "say", x: `the gym sealed its tuned analyst weights after ${seal.n_train} training tasks: ${seal.hash.slice(0, 16)}. from now on they are scored only on predictions made after this moment.` });
   } catch (e) {
-    console.error("[james] gym", e instanceof Error ? e.message : e);
+    console.error("[parkinson] gym", e instanceof Error ? e.message : e);
   }
   if ((await chainMode()) === "off") return;
-  await syncOnchainPredictions().catch((e) => console.error("[james] sync", e?.message ?? e));
-  await anchorReceipts().catch((e) => console.error("[james] anchor", e?.message ?? e));
+  await syncOnchainPredictions().catch((e) => console.error("[parkinson] sync", e?.message ?? e));
+  await retryResults().catch((e) => console.error("[parkinson] retry", e?.message ?? e));
+  await anchorReceipts().catch((e) => console.error("[parkinson] anchor", e?.message ?? e));
 }
 
 async function step() {
-  const w = g.__jamesWorker!;
+  const w = g.__parkinsonWorker!;
   if (w.busy) return;
   w.busy = true;
   try {
@@ -195,7 +196,7 @@ async function step() {
         const study = nextStudy();
         if (study) {
           setStatus({ state: "testing", gene: study.short });
-          await runStudy(study.id, { emit: pushEvent, pace: PACE }).catch((e) => console.error("[james] study", e?.message ?? e));
+          await runStudy(study.id, { emit: pushEvent, pace: PACE }).catch((e) => console.error("[parkinson] study", e?.message ?? e));
         }
         setStatus({ state: "waiting", last: rec?.symbol ?? next.gene, next_at: new Date(Date.now() + agentInterval() * 1000).toISOString() });
       }
@@ -204,7 +205,7 @@ async function step() {
       pushEvent({ gene: null, k: "say", x: MUSINGS[Math.floor(Math.random() * MUSINGS.length)] });
     }
   } catch (e) {
-    console.error("[james] worker step failed:", e instanceof Error ? e.message : e);
+    console.error("[parkinson] worker step failed:", e instanceof Error ? e.message : e);
     setStatus({ state: "waiting", next_at: new Date(Date.now() + 60_000).toISOString() });
   } finally {
     w.busy = false;
@@ -212,14 +213,14 @@ async function step() {
 }
 
 export function startWorker() {
-  if (g.__jamesWorker?.started) return;
-  g.__jamesWorker = { started: true, busy: false, lastChore: 0, lastSay: Date.now() };
+  if (g.__parkinsonWorker?.started) return;
+  g.__parkinsonWorker = { started: true, busy: false, lastChore: 0, lastSay: Date.now() };
   // a gene that was mid-run when the server stopped is simply skipped; the loop picks the next one
   setStatus({ state: "waiting", next_at: new Date(Date.now() + 8000).toISOString() });
   setInterval(step, 5000).unref?.();
-  console.log(`[james] agent loop started: a gene every ${agentInterval()}s`);
+  console.log(`[parkinson] agent loop started: a gene every ${agentInterval()}s`);
 }
 
-export const workerStarted = () => !!g.__jamesWorker?.started;
+export const workerStarted = () => !!g.__parkinsonWorker?.started;
 export const notebookNights = (limit = 7) =>
   all<{ night: string; at: string; pool: number; investigated: number; data: string }>("select * from notebook order by night desc limit ?", limit);

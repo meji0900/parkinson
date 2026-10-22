@@ -1,8 +1,8 @@
 // Everything that names the project lives here, so a rename is one file.
-// james: after James Parkinson, the London surgeon who described the "shaking palsy" in 1817.
+// parkinson: after James Parkinson, the London surgeon who described the "shaking palsy" in 1817.
 export const BRAND = {
-  name: "james",
-  ticker: "$JAMES",
+  name: "parkinson",
+  ticker: "$PARKINSON",
   disease: "Parkinson's",
   tagline: "Parkinson's research notebook",
   description:

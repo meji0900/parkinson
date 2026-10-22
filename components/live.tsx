@@ -28,7 +28,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         if (d.events.length) {
           // the neuron field fires a cell for each new step the agent takes (not for the backlog on first load)
           if (after.current > 0) {
-            window.dispatchEvent(new Event("james:pulse"));
+            window.dispatchEvent(new Event("parkinson:pulse"));
           }
           after.current = d.events[d.events.length - 1].seq;
           setLast(d.events[d.events.length - 1]);

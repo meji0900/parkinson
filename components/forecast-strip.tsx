@@ -1,6 +1,8 @@
 // One closed forecast window on a line from "won't hold" (0%) to "holds" (100%): every forecast as a tick, the crowd's
 // average, the agent's sealed number, and the end it actually landed on, marked by a pigmented neuron (held) or a
 // pale, depigmented one (did not). Pure SVG, so the server and the forecast board can both draw it.
+import { BRAND } from "@/lib/brand";
+
 type Mark = { p: number; kind: "person" | "agent" };
 
 const X0 = 14, X1 = 346, W = 360, Y = 22;
@@ -30,7 +32,7 @@ export function ForecastStrip({ held, house, crowd, marks, mine }: { held: boole
 export function StripLegend() {
   return (
     <p className="fstrip-key small">
-      <span><svg viewBox="0 0 12 12" aria-hidden><circle className="house" cx="6" cy="6" r="4.5" /></svg> james, sealed</span>
+      <span><svg viewBox="0 0 12 12" aria-hidden><circle className="house" cx="6" cy="6" r="4.5" /></svg> {BRAND.name}, sealed</span>
       <span><svg viewBox="0 0 12 12" aria-hidden><path className="crowd" d="M6 0.5 l5.5 5.5 l-5.5 5.5 l-5.5 -5.5 z" /></svg> the crowd&apos;s average</span>
       <span><svg viewBox="0 0 12 12" aria-hidden><line className="f person" x1="6" x2="6" y1="1" y2="11" /></svg> a person</span>
       <span><svg viewBox="0 0 12 12" aria-hidden><line className="f agent" x1="6" x2="6" y1="1" y2="11" /></svg> an agent</span>

@@ -29,6 +29,6 @@ export function view(e: NonNullable<ReturnType<typeof getExperiment>>, repeat = 
     gene: e.gene, group: e.group, axis: e.axis, registration: e.registration, registered_at: e.at,
     by: e.by, wallet: e.wallet, agent: e.agent, discovery: e.discovery, replication: e.replication, passed: e.passed,
     reason: e.reason, receipt: e.receipt, repeat, checks: e.checks, chain_tx: e.chain_tx, resolve_tx: e.resolve_tx,
-    reward_tx: e.reward_tx, chain_status: e.chain_status, simulated: cohorts().primary.simulated,
+    reward_tx: e.reward_tx, chain_status: e.chain_status, chain: e.chain, simulated: cohorts().primary.simulated,
   };
 }

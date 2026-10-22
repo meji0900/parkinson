@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Sec } from "@/components/sections";
 import { AXIS_SHORT } from "@/lib/atlas/cohort";
 import { ANALYST_READS, ANALYSTS, gym, type Evaluation } from "@/lib/atlas/gym";
+import { BRAND } from "@/lib/brand";
 import { cohorts, confirmation } from "@/lib/atlas/cohort";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export default function GymPage() {
         <p className="kicker">Research gym</p>
         <h1>Can the analysts learn to tell which results will hold?</h1>
         <p className="lede">
-          Every prediction james has made was later tested, so its ledgers are full of research questions with known answers. The gym turns them
+          Every prediction {BRAND.name} has made was later tested, so its ledgers are full of research questions with known answers. The gym turns them
           into tasks for the six analysts of the swarm, scores their judgement against what actually happened, tunes them on one set of genes,
           and checks them on genes they have never seen. Then the tuned version is sealed by hash and scored on predictions made after the seal.
         </p>

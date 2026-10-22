@@ -13,7 +13,8 @@ import { cohorts, type Axis, type Group } from "./cohort";
 import { getExperiment, test, type Experiment } from "./experiments";
 
 export const WINDOW_SECONDS = Math.max(0, Number(process.env.FORECAST_WINDOW_SECONDS ?? 600));
-export const HOUSE = "house:james";
+/** the agent's own forecasts; the key does not carry the brand, so a rename never touches the ledger */
+export const HOUSE = "house";
 /** forecasters are ranked once this many of their forecasts have been scored */
 export const RANKED_AFTER = 3;
 
@@ -48,7 +49,7 @@ export function openWindow(exp: Experiment, seconds = WINDOW_SECONDS): { closes:
   const opened = nowIso(), closes = iso(Date.now() + seconds * 1000);
   tx(() => {
     run("insert into windows (registration, opened, closes, agent_p, agent_salt, agent_commit) values (?, ?, ?, ?, ?, ?)", exp.registration, opened, closes, p, salt, commit);
-    run("insert into forecasts (registration, who, kind, name, p, at) values (?, ?, 'house', 'james', ?, ?)", exp.registration, HOUSE, p, opened);
+    run("insert into forecasts (registration, who, kind, name, p, at) values (?, ?, 'house', null, ?, ?)", exp.registration, HOUSE, p, opened);
   });
   return { closes, commit };
 }

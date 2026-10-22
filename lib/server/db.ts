@@ -78,13 +78,18 @@ const COLUMNS: [table: string, column: string, type: string][] = [
   ["experiments", "agent", "text"],
   ["work_units", "agent", "text"],
   ["proposals", "agent", "text"],
+  // on-chain records keep the chain id they were written to
+  ["experiments", "chain", "text"],
+  ["anchors", "chain", "text"],
+  ["faucet", "chain", "text"],
 ];
 
-const g = globalThis as unknown as { __jamesDb?: DatabaseSync };
+const g = globalThis as unknown as { __parkinsonDb?: DatabaseSync };
 
 export function db(): DatabaseSync {
-  if (g.__jamesDb) return g.__jamesDb;
-  const file = process.env.JAMES_DB ?? path.join(process.cwd(), "data", "james.db");
+  if (g.__parkinsonDb) return g.__parkinsonDb;
+  // JAMES_DB is the name the variable had before the rename; deployments that still set it keep their ledger
+  const file = process.env.PARKINSON_DB ?? process.env.JAMES_DB ?? path.join(process.cwd(), "data", "parkinson.db");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const d = new DatabaseSync(file);
   d.exec("pragma journal_mode = wal; pragma busy_timeout = 5000; pragma synchronous = normal;");
@@ -94,7 +99,9 @@ export function db(): DatabaseSync {
     if (!have.some((x) => x.name === c)) d.exec(`alter table ${t} add column ${c} ${type}`);
   }
   d.exec("create index if not exists experiments_agent on experiments(agent)");
-  g.__jamesDb = d;
+  // the house's forecasts were filed under its brand ("house:james"); the key is brand-free now
+  d.exec("update forecasts set who = 'house', name = null where who like 'house:%'");
+  g.__parkinsonDb = d;
   return d;
 }
 

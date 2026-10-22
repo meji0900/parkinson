@@ -1,5 +1,6 @@
 // The home page's reading: where Parkinson's comes from, what is known, what this agent cannot do.
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 import { REFS, refHref, refLink } from "@/lib/sources";
 import { BraakStages } from "./figures";
 import { PlatePair } from "./plates";
@@ -41,7 +42,7 @@ export function Background() {
       </p>
       <BraakStages />
       <p>
-        A hypothesis a lab can test names four things: a gene, a cell type, a direction of perturbation, and a measurable readout. james
+        A hypothesis a lab can test names four things: a gene, a cell type, a direction of perturbation, and a measurable readout. {BRAND.name}
         produces hypotheses in that form. <Link href="/parkinsons">The longer history, the genes and the treatments are on their own page.</Link>
       </p>
     </Sec>
@@ -82,7 +83,7 @@ export function Limits() {
         <li>The Protein Atlas has no single-cell profile of midbrain dopamine neurons; midbrain enrichment stands in for it.</li>
         <li>Searches for short symbols such as <i>TH</i> also match unrelated papers and trials.</li>
         <li>The weights are a choice. Every entry shows the six scores behind it.</li>
-        <li>Only genes are investigated, not compounds. Devnet test tokens have no value, and no token is a claim on any result.</li>
+        <li>Only genes are investigated, not compounds. Testnet tokens have no value, and no token is a claim on any result.</li>
       </ul>
     </Sec>
   );

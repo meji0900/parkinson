@@ -3,6 +3,7 @@
 // /api/run) or a question (/api/ask), then catches up on what it missed. The frosted end of the slide
 // carries the label a histologist would write on it: the gene on the bench and the region.
 import { useEffect, useRef, useState } from "react";
+import { BRAND } from "@/lib/brand";
 import { Terminal, type Ev } from "@/lib/client/terminal";
 import { useLive, type LiveEvent } from "./live";
 import { Mark } from "./mark";
@@ -42,7 +43,7 @@ export function Console({ examples, region = "substantia nigra" }: { examples: s
     const term = new Terminal(termRef.current!, {
       onGene: setGene,
       onHypothesis: (h, g) => setHyp({ hyp: h as Hyp, gene: g ?? "" }),
-      onReceipt: () => window.dispatchEvent(new Event("james:receipts")),
+      onReceipt: () => window.dispatchEvent(new Event("parkinson:receipts")),
     });
     t.current = term;
     termRef.current!.replaceChildren();
@@ -77,7 +78,7 @@ export function Console({ examples, region = "substantia nigra" }: { examples: s
       }
     });
     const onAsk = (ev: Event) => investigate((ev as CustomEvent<string>).detail);
-    window.addEventListener("james:investigate", onAsk);
+    window.addEventListener("parkinson:investigate", onAsk);
     return () => {
       // React mounts effects twice in development: stop the first boot before the second starts
       alive = false;
@@ -85,7 +86,7 @@ export function Console({ examples, region = "substantia nigra" }: { examples: s
       following.current = false;
       lastSeq.current = 0;
       off();
-      window.removeEventListener("james:investigate", onAsk);
+      window.removeEventListener("parkinson:investigate", onAsk);
       ctl.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,7 +180,7 @@ export function Console({ examples, region = "substantia nigra" }: { examples: s
     <div className="console">
       <div className="slide">
         <div className="slide-label" aria-hidden>
-          <span>james</span>
+          <span>{BRAND.name}</span>
           <span className="gene">{gene}</span>
           <span>{region}</span>
           <span className="mode">{mode}</span>

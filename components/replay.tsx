@@ -8,7 +8,7 @@ export function Replay({ gene, children = "Replay", className }: { gene: string;
       onClick={() => {
         if (document.getElementById("live")) {
           document.getElementById("live")!.scrollIntoView({ behavior: "smooth", block: "start" });
-          window.dispatchEvent(new CustomEvent("james:investigate", { detail: gene }));
+          window.dispatchEvent(new CustomEvent("parkinson:investigate", { detail: gene }));
         } else {
           window.location.href = `/?gene=${encodeURIComponent(gene)}#live`;
         }

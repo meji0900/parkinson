@@ -1,4 +1,4 @@
-"""Build the atlas files james tests predictions on, from a substantia nigra single-nucleus h5ad.
+"""Build the atlas files the agent tests predictions on, from a substantia nigra single-nucleus h5ad.
 
 Output (read by lib/atlas/cohort.ts):
   <out>/meta.json             donors with age, sex, PMI, Braak Lewy-body stage, nigral neuron loss, parkinsonism and

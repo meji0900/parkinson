@@ -27,7 +27,8 @@ export default async function ReceiptPage({ params }: Props) {
   const no = Number((await params).no);
   const r = Number.isInteger(no) ? getReceipt(no) : null;
   if (!r) notFound();
-  const anchor = one<{ head_no: number; tx: string; at: string }>("select head_no, tx, at from anchors where head_no >= ? order by head_no limit 1", no);
+  const anchor = one<{ head_no: number; tx: string; at: string; chain: string | null }>("select head_no, tx, at, chain from anchors where head_no >= ? order by head_no limit 1", no);
+  const proof = anchor ? explorer("tx", anchor.tx, anchor.chain) : null;
   const sc = listCases(200, r.subject).find((c) => c.receipt === no);
   return (
     <main>
@@ -44,7 +45,7 @@ export default async function ReceiptPage({ params }: Props) {
           <ReceiptCheck r={r} />
           <p className="small" style={{ marginTop: 18 }}>
             {anchor ? (
-              <>Covered by the on-chain checkpoint of receipt {String(anchor.head_no).padStart(4, "0")} ({anchor.at.slice(0, 16).replace("T", " ")} UTC). <a href={explorer("tx", anchor.tx)} target="_blank" rel="noreferrer">See the checkpoint on Solana</a>.</>
+              <>Covered by the on-chain checkpoint of receipt {String(anchor.head_no).padStart(4, "0")} ({anchor.at.slice(0, 16).replace("T", " ")} UTC).{proof && <> <a href={proof} target="_blank" rel="noreferrer">See the checkpoint on Robinhood Chain</a>.</>}</>
             ) : "Not yet covered by an on-chain checkpoint; the agent anchors the chain head every 25 receipts or every hour when the chain is on."}{" "}
             {no > 1 && <Link href={`/receipt/${no - 1}`}>Previous receipt</Link>}{" "}
             {getReceipt(no + 1) && <Link href={`/receipt/${no + 1}`}>Next</Link>}

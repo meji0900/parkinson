@@ -1,47 +1,58 @@
-// The agent's key: the registry authority, the oracle that writes results, and the fee payer.
+// The agent's key: the registry's oracle, the payer of the gas for wallet predictions and the faucet, and the sender
+// of its own seals. On a host it comes from SIGNER_PRIVATE_KEY; on this machine from the encrypted Foundry keystore in
+// .keys (npm run wallet:new), unlocked with its password file. The key itself is never printed.
 import fs from "node:fs";
 import path from "node:path";
-import { createPublicKey, verify } from "node:crypto";
-import { Keypair, PublicKey } from "@solana/web3.js";
-import bs58 from "bs58";
+import { createDecipheriv, pbkdf2Sync, scryptSync } from "node:crypto";
+import { getAddress, isAddress as isEvmAddress, keccak256, nonceManager, verifyMessage, type Address, type Hex } from "viem";
+import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 
-const g = globalThis as unknown as { __jamesAgentKey?: Keypair | null };
+const g = globalThis as unknown as { __parkinsonSigner?: PrivateKeyAccount | null };
 
-export function agentKeypair(): Keypair | null {
-  if (g.__jamesAgentKey !== undefined) return g.__jamesAgentKey;
-  let key: Keypair | null = null;
+export function agentAccount(): PrivateKeyAccount | null {
+  if (g.__parkinsonSigner !== undefined) return g.__parkinsonSigner;
+  let account: PrivateKeyAccount | null = null;
   try {
-    const raw = process.env.AGENT_SECRET_KEY?.trim();
-    if (raw) {
-      key = raw.startsWith("[") ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw))) : Keypair.fromSecretKey(bs58.decode(raw));
-    } else {
-      const file = path.resolve(/*turbopackIgnore: true*/ process.env.AGENT_KEYPAIR_PATH ?? path.join(process.cwd(), ".keys", "agent.json"));
-      if (fs.existsSync(file)) key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(file, "utf8"))));
-    }
+    const raw = process.env.SIGNER_PRIVATE_KEY?.trim();
+    const key = raw ? (raw.startsWith("0x") ? raw : `0x${raw}`) : fromKeystore();
+    // the nonce manager lets the agent send several transactions at once without two taking the same nonce
+    if (key) account = privateKeyToAccount(key as Hex, { nonceManager });
   } catch (e) {
-    console.error("[james] agent key could not be read:", e instanceof Error ? e.message : e);
+    console.error("[parkinson] signer key could not be read:", e instanceof Error ? e.message : e);
   }
-  g.__jamesAgentKey = key;
-  return key;
+  g.__parkinsonSigner = account;
+  return account;
 }
 
-const SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
-
-/** ed25519 check of a wallet's signMessage output, with Node's own crypto */
-export function verifyWalletSignature(message: string, signatureB58: string, wallet: string): boolean {
-  try {
-    const pub = new PublicKey(wallet).toBytes();
-    const key = createPublicKey({ key: Buffer.concat([SPKI_PREFIX, Buffer.from(pub)]), format: "der", type: "spki" });
-    return verify(null, Buffer.from(message, "utf8"), key, Buffer.from(bs58.decode(signatureB58)));
-  } catch {
-    return false;
-  }
+/** Web3 Secret Storage v3, the format `cast wallet new` writes */
+function fromKeystore(): Hex | null {
+  const file = path.resolve(/*turbopackIgnore: true*/ process.env.SIGNER_KEYSTORE ?? path.join(process.cwd(), ".keys", "evm-testnet"));
+  if (!fs.existsSync(file)) return null;
+  const password = fs.readFileSync(path.resolve(/*turbopackIgnore: true*/ process.env.SIGNER_PASSWORD_FILE ?? `${file}.pass`), "utf8").trim();
+  const { crypto: c } = JSON.parse(fs.readFileSync(file, "utf8"));
+  const k = c.kdfparams;
+  const salt = Buffer.from(k.salt, "hex");
+  const dk = c.kdf === "scrypt"
+    ? scryptSync(password, salt, k.dklen, { N: k.n, r: k.r, p: k.p, maxmem: 256 * k.n * k.r })
+    : pbkdf2Sync(password, salt, k.c, k.dklen, "sha256");
+  const ct = Buffer.from(c.ciphertext, "hex");
+  if (keccak256(Buffer.concat([dk.subarray(16, 32), ct])).slice(2) !== c.mac) throw new Error("the keystore password does not match");
+  const d = createDecipheriv("aes-128-ctr", dk.subarray(0, 16), Buffer.from(c.cipherparams.iv, "hex"));
+  return `0x${Buffer.concat([d.update(ct), d.final()]).toString("hex")}`;
 }
 
-export function isAddress(s: unknown): s is string {
-  if (typeof s !== "string" || s.length < 32 || s.length > 44) return false;
+export const isAddress = (s: unknown): s is string => typeof s === "string" && isEvmAddress(s, { strict: false });
+/** one spelling per wallet (EIP-55), so rate limits and the leaderboard see a wallet once */
+export const normalAddress = (s: string) => getAddress(s);
+
+/** an EIP-191 signature from a wallet; contract wallets (EIP-1271) are checked through the chain */
+export async function verifyWalletSignature(message: string, signature: unknown, wallet: string): Promise<boolean> {
+  if (typeof signature !== "string" || !/^0x[0-9a-fA-F]{130,}$/.test(signature)) return false;
+  const args = { address: wallet as Address, message, signature: signature as Hex };
   try {
-    return PublicKey.isOnCurve(new PublicKey(s).toBytes());
+    if (await verifyMessage(args)) return true;
+    const { publicClient } = await import("./oracle");
+    return await publicClient().verifyMessage(args);
   } catch {
     return false;
   }

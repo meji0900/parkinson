@@ -243,7 +243,7 @@ function diskCohort(dir: string): Cohort | null {
 }
 
 // ---------------------------------------------------------------- the two cohorts in use
-const g = globalThis as unknown as { __jamesCohorts?: { primary: Cohort; second: Cohort } };
+const g = globalThis as unknown as { __parkinsonCohorts?: { primary: Cohort; second: Cohort } };
 
 /**
  * The primary atlas (where predictions are sealed and tested) and the second cohort (where the ones that hold are
@@ -251,17 +251,18 @@ const g = globalThis as unknown as { __jamesCohorts?: { primary: Cohort; second:
  * the simulated second region, and says so.
  */
 export function cohorts(): { primary: Cohort; second: Cohort } {
-  if (g.__jamesCohorts) return g.__jamesCohorts;
+  if (g.__parkinsonCohorts) return g.__parkinsonCohorts;
   const root = process.env.ATLAS_DIR ?? path.join(process.cwd(), "data", "atlas");
   const sim = process.env.ATLAS_PRIMARY === "simulated";
+  // the simulation seeds keep the name they were first drawn with, so the simulated donors never change
   const primary =
     (sim ? null : diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_PRIMARY ?? "pd-snpc"))) ??
     simulatedCohort("sim-snpc-v2", "simulated substantia nigra cohort (84 donors)", "substantia nigra pars compacta", "james-sim-snpc-v1", 84, 1);
   const second =
     (sim ? null : diskCohort(path.join(/*turbopackIgnore: true*/ root, process.env.ATLAS_SECOND ?? "pd-sn-kamath"))) ??
     simulatedCohort("sim-vta-v2", "simulated ventral tegmental area cohort (80 donors)", "ventral tegmental area", "james-sim-vta-v1", 80, 0.75);
-  g.__jamesCohorts = { primary, second };
-  return g.__jamesCohorts;
+  g.__parkinsonCohorts = { primary, second };
+  return g.__parkinsonCohorts;
 }
 
 /** the stages present in a cohort, with a label for each ("0", "3-4" for a bin taken at its middle) */

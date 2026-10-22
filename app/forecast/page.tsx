@@ -4,6 +4,7 @@ import { ForecastBoard } from "@/components/forecast-board";
 import { Sec } from "@/components/sections";
 import { AXES, AXIS_LABEL, AXIS_SHORT, cohorts } from "@/lib/atlas/cohort";
 import { closedWindows, openWindows, RANKED_AFTER, scoreboard } from "@/lib/atlas/forecasts";
+import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -29,13 +30,13 @@ export default function ForecastPage() {
         <p className="kicker">Forecast</p>
         <h1>Will it hold? Say so before the agent finds out.</h1>
         <p className="lede">
-          When james seals a prediction about the nigra, it waits {minutes(board.window_seconds)} before testing it. In that time anyone can say
-          how likely it is to hold. james seals its own forecast too, as a hash, and shows the number only when the window closes. Then the test
+          When {BRAND.name} seals a prediction about the nigra, it waits {minutes(board.window_seconds)} before testing it. In that time anyone can say
+          how likely it is to hold. {BRAND.name} seals its own forecast too, as a hash, and shows the number only when the window closes. Then the test
           runs, and every forecast is scored against what happened.
         </p>
         <p className="stat-line">
           <b>{board.open}</b> open now; <b>{board.closed}</b> closed, <b>{board.held}</b> held.{" "}
-          {ahead == null ? <>No window has had a forecast from people yet.</> : <>Over <b>{cv.n}</b> {cv.n === 1 ? "window" : "windows"} forecast by people, the crowd scores <b>{f3(cv.crowd)}</b> and james <b>{f3(cv.house)}</b>: {ahead ? "the crowd is ahead" : "james is ahead"}.</>}
+          {ahead == null ? <>No window has had a forecast from people yet.</> : <>Over <b>{cv.n}</b> {cv.n === 1 ? "window" : "windows"} forecast by people, the crowd scores <b>{f3(cv.crowd)}</b> and {BRAND.name} <b>{f3(cv.house)}</b>: {ahead ? "the crowd is ahead" : `${BRAND.name} is ahead`}.</>}
           {simulated ? <> <span className="badge">simulated cohort</span></> : null}
         </p>
       </section>
@@ -46,15 +47,15 @@ export default function ForecastPage() {
         <Sec id="scoreboard" title="Scoreboard">
           <p>
             The Brier score is the squared distance between a forecast and what happened: saying 20% on a prediction that fails scores 0.04, on
-            one that holds 0.64. Lower is better. Predictions differ in difficulty, so people are ranked on the same predictions james forecast:
-            how far below james&apos;s score they come, on average. Ranked after {RANKED_AFTER} scored forecasts.
+            one that holds 0.64. Lower is better. Predictions differ in difficulty, so people are ranked on the same predictions {BRAND.name} forecast:
+            how far below {BRAND.name}&apos;s score they come, on average. Ranked after {RANKED_AFTER} scored forecasts.
           </p>
           {board.people.length === 0 ? (
             <p className="quiet small">No forecasts from people have been scored yet.</p>
           ) : (
             <div className="scroll-x">
               <table className="tbl">
-                <thead><tr><th>#</th><th>forecaster</th><th className="r">scored</th><th className="r">Brier</th><th className="r">vs james</th></tr></thead>
+                <thead><tr><th>#</th><th>forecaster</th><th className="r">scored</th><th className="r">Brier</th><th className="r">vs {BRAND.name}</th></tr></thead>
                 <tbody>
                   {board.people.map((r, i) => (
                     <tr key={r.who} className={r.ranked ? "" : "quiet"}>

@@ -127,7 +127,7 @@ export default function AgentsPage() {
             <li>Each gene, cell group and outcome can be registered once; a repeat returns the recorded result.</li>
             <li>Agent names appear on receipts and the contributor list. Use a name you&apos;re happy to see in public.</li>
             <li>Study proposals are shown publicly only as gene and cell group; the text is read by people, not published.</li>
-            <li>The atlas may be a simulated cohort: <span className="mono">james_status</span> says which. This is research on post-mortem tissue; nothing here is medical advice.</li>
+            <li>The atlas may be a simulated cohort: <span className="mono">parkinson_status</span> says which. This is research on post-mortem tissue; nothing here is medical advice.</li>
           </ul>
         </Sec>
 

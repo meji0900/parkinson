@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { NeuronField } from "./field";
 
-const KEY = "james-neurons-paused";
+const KEY = "parkinson-neurons-paused";
+const OLD_KEY = "james-neurons-paused"; // the name before the rename, so a paused field stays paused
 
 export function NeuronLayer() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -16,7 +17,7 @@ export function NeuronLayer() {
   useEffect(() => {
     let cancelled = false;
     let stored = false;
-    try { stored = localStorage.getItem(KEY) === "1"; } catch { /* storage blocked: start animated */ }
+    try { stored = (localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY)) === "1"; } catch { /* storage blocked: start animated */ }
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     import("./field").then(({ NeuronField }) => {
       if (cancelled || !canvas.current) return;

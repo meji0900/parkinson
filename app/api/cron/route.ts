@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { nextGene, nightly, workOne } from "@/lib/agent/worker";
-import { anchorReceipts, syncOnchainPredictions } from "@/lib/chain/oracle";
+import { anchorReceipts, retryResults, syncOnchainPredictions } from "@/lib/chain/oracle";
 import { fail, ok } from "@/lib/server/api";
 import { setStatus } from "@/lib/server/events";
 
@@ -15,6 +15,14 @@ export async function GET(req: Request) {
   if (!secret) return fail("set CRON_SECRET to use the cron endpoint", 403);
   if (given !== secret) return fail("unauthorized", 401);
   const task = url.searchParams.get("task") ?? "tick";
+  try {
+    return await run(task);
+  } catch (e) {
+    return fail(`${task} failed: ${e instanceof Error ? e.message : e}`, 500);
+  }
+}
+
+async function run(task: string) {
   if (task === "tick") {
     const next = await nextGene();
     if (!next) return ok({ task, gene: null });
@@ -24,6 +32,6 @@ export async function GET(req: Request) {
   }
   if (task === "nightly") { await nightly(); return ok({ task }); }
   if (task === "anchor") return ok({ task, tx: await anchorReceipts(true) });
-  if (task === "sync") return ok({ task, picked_up: await syncOnchainPredictions() });
+  if (task === "sync") return ok({ task, picked_up: await syncOnchainPredictions(), retried: await retryResults() });
   return fail("unknown task");
 }

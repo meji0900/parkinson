@@ -1,16 +1,15 @@
 "use client";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { VersionedTransaction } from "@solana/web3.js";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { explorer } from "@/lib/chain/config";
-import { ConnectWallet } from "./wallet";
+import { useConnection } from "wagmi";
+import { CHAIN, explorer, isTxHash } from "@/lib/chain/config";
+import { ConnectWallet, useSignTyped, walletError } from "./wallet";
 
 type Stat = { effect: number; p: number; n: number; stat: string } | null;
 export type Result = {
   gene: string; group: string; axis: string; registration: string; discovery: Stat; replication: Stat; passed: boolean | null;
   reason: string | null; receipt: number | null; repeat: boolean; by?: string | null; wallet?: string | null; at?: string;
-  chain_tx: string | null; resolve_tx: string | null; reward_tx: string | null; chain_status: string | null; simulated: boolean;
+  chain_tx: string | null; resolve_tx: string | null; reward_tx: string | null; chain_status: string | null; chain: string | null; simulated: boolean;
 };
 
 const AXES: [string, string][] = [
@@ -20,13 +19,12 @@ const AXES: [string, string][] = [
 ];
 export const fmt = (h: Stat) => (h ? `${h.effect >= 0 ? "+" : ""}${h.effect.toFixed(2)} (p ${h.p < 0.001 ? h.p.toExponential(1) : h.p.toFixed(3)}, n ${h.n})` : "n/a");
 export const pad = (n: number) => String(n).padStart(4, "0");
-const toB64 = (b: Uint8Array) => btoa(String.fromCharCode(...b));
-const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-const txLink = (sig: string | null) => (sig && !sig.startsWith("account:") ? explorer("tx", sig) : null);
+const txLink = (tx: string | null, chain: string | null) => (isTxHash(tx) ? explorer("tx", tx, chain) : null);
 
 export function Predict({ groups, axes, chainMode, donors }: { groups: string[]; axes?: string[]; chainMode: string; donors: number }) {
   const outcomes = AXES.filter(([v]) => !axes || axes.includes(v));
-  const { publicKey, signTransaction } = useWallet();
+  const { address } = useConnection();
+  const signTyped = useSignTyped();
   const [f, setF] = useState({ gene: "", group: "dopamine neurons", axis: "braak", by: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [out, setOut] = useState<Result | null>(null);
@@ -54,19 +52,19 @@ export function Predict({ groups, axes, chainMode, donors }: { groups: string[];
   }
 
   async function withWallet() {
-    if (!publicKey || !signTransaction) return;
+    if (!address) return;
     setErr(null); setOut(null);
     try {
-      setBusy("Preparing the registration transaction…");
-      const prep = await post("/api/predict/prepare", { ...f, wallet: publicKey.toBase58() });
+      setBusy("Preparing the prediction…");
+      const prep = await post("/api/predict/prepare", { ...f, wallet: address });
       if (prep.repeat) { setOut(prep.result); return; }
-      setBusy("Approve the transaction in your wallet. The agent pays the fee.");
-      const signed = await signTransaction(VersionedTransaction.deserialize(fromB64(prep.tx)));
-      setBusy("Registering on Solana devnet, then testing…");
-      setOut(await post("/api/predict/submit", { registration: prep.registration, tx: toB64(signed.serialize()) }));
+      setBusy("Sign the prediction in your wallet. It is a signature, not a transaction: the agent registers it and pays the gas.");
+      const signature = await signTyped(prep.typed);
+      setBusy(`Registering on ${CHAIN.name}, then testing…`);
+      setOut(await post("/api/predict/submit", { registration: prep.registration, signature }));
       load();
     } catch (x) {
-      setErr((x as Error).message);
+      setErr(walletError(x));
     } finally {
       setBusy(null);
     }
@@ -81,17 +79,17 @@ export function Predict({ groups, axes, chainMode, donors }: { groups: string[];
         <label className="who">your name on the record (optional)<input value={f.by} onChange={(e) => setF({ ...f, by: e.target.value })} maxLength={40} placeholder="anonymous" spellCheck={false} /></label>
         <div className="actions">
           <button className="btn" type="submit" disabled={!!busy}>Register and test</button>
-          {chainMode === "program" && (publicKey
+          {chainMode === "contract" && (address
             ? <button className="btn dab" type="button" disabled={!!busy || !f.gene} onClick={withWallet}>Sign with wallet and test</button>
             : <ConnectWallet label="Sign it on-chain instead" />)}
           {busy && <span className="busy" role="status">{busy}</span>}
         </div>
       </form>
       <p className="small quiet">
-        {chainMode === "program"
-          ? "Signed predictions get their own account on Solana devnet. If one replicates, the registry mints test tokens to the wallet that made it."
+        {chainMode === "contract"
+          ? `Signed predictions are stored in the registry contract on ${CHAIN.name}, under the wallet that signed them. If one replicates, the registry can reward that wallet.`
           : chainMode === "memo"
-            ? "Each prediction's hash is also written to Solana devnet in a memo before the data is read."
+            ? `Each prediction's hash is also written to ${CHAIN.name} in a memo transaction before the data is read.`
             : "Predictions are sealed in the ledger; on-chain sealing is off on this server."}
       </p>
       <div className="predict-out" aria-live="polite">
@@ -115,7 +113,7 @@ export function Predict({ groups, axes, chainMode, donors }: { groups: string[];
 }
 
 export function ResultCard({ r }: { r: Result }) {
-  const seal = txLink(r.chain_tx), res = txLink(r.resolve_tx), reward = txLink(r.reward_tx);
+  const seal = txLink(r.chain_tx, r.chain), res = txLink(r.resolve_tx, r.chain), reward = txLink(r.reward_tx, r.chain);
   return (
     <div className="result">
       <pre>{`${r.gene} in ${r.group}, ${r.axis}${r.repeat ? "   (registered earlier; this is the recorded result)" : ""}
@@ -129,7 +127,7 @@ verdict      ${r.passed ? "held in both halves" : "did not hold"}${r.simulated ?
         <Link href={`/gene/${r.gene}`}>Everything on {r.gene}</Link>.
         {seal && <> <a href={seal} target="_blank" rel="noreferrer">Seal on-chain</a>.</>}
         {res && <> <a href={res} target="_blank" rel="noreferrer">Result on-chain</a>.</>}
-        {reward && <> <a href={reward} target="_blank" rel="noreferrer">Reward minted</a>.</>}
+        {reward && <> <a href={reward} target="_blank" rel="noreferrer">Reward paid</a>.</>}
       </p>
     </div>
   );

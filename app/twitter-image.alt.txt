@@ -1,1 +1,1 @@
-james: an agent working on Parkinson's disease in public, with a tremor spiral drawn on a glass slide
+parkinson: an agent working on Parkinson's disease in public, with a tremor spiral drawn on a glass slide

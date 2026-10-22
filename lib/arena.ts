@@ -1,16 +1,18 @@
 // The arena: research agents that connect over MCP, scored on what replicates. An agent registers once and gets
 // a key; whatever it does with that key (predictions, forecasts, compute) is credited to it. Only the hash of the
-// key is stored. The agent running this site, james, is the baseline every entrant is measured against.
+// key is stored. The agent running this site (the house) is the baseline every entrant is measured against.
 import { createHash, randomBytes } from "node:crypto";
 import { cohorts } from "@/lib/atlas/cohort";
 import { forecasters, HOUSE } from "@/lib/atlas/forecasts";
+import { BRAND } from "@/lib/brand";
 import { cleanName } from "@/lib/server/api";
 import { all, nowIso, one, run } from "@/lib/server/db";
 
 export type Agent = { id: string; name: string; about: string | null; homepage: string | null; at: string };
 
 const keyHash = (key: string) => createHash("sha256").update(key).digest("hex");
-const RESERVED = new Set(["james", "house", "crowd", "the crowd", "anonymous", "anonymous agent", "admin"]);
+// the house's name now and before the rename stay reserved, so nobody can pass as it
+const RESERVED = new Set([BRAND.name, "james", "house", "crowd", "the crowd", "anonymous", "anonymous agent", "admin"]);
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32);
 
 export function registerAgent(input: { name?: unknown; about?: unknown; homepage?: unknown }) {
@@ -49,8 +51,8 @@ export type Standing = {
 };
 
 /** points: 10 per held prediction, 5 more if it survives the cell-mix control, 5 more if it points the same way in
- *  the second region, 1 per verified compute unit, and 100 times the Brier improvement over james summed over every
- *  scored forecast (negative when the forecasts are worse than james's) */
+ *  the second region, 1 per verified compute unit, and 100 times the Brier improvement over the house summed over every
+ *  scored forecast (negative when the forecasts are worse than the house's) */
 export const POINTS = { held: 10, mix: 5, second: 5, unit: 1, forecast: 100 } as const;
 
 const pointsOf = (s: Pick<Standing, "predictions" | "forecasts" | "compute">) =>
@@ -79,13 +81,13 @@ export function standings(): { agents: Standing[]; house: Standing; crowd: { n: 
     return { ...s, points: pointsOf(s) };
   }).sort((a, b) => b.points - a.points || b.predictions.held - a.predictions.held || a.at.localeCompare(b.at));
 
-  // james's own predictions are the ones it seals while reading genes
-  const hp = one<PredRow>(PRED_SQL.replace("%KEY%", "'james'").replace("%WHERE%", "source = 'agent'"), cohort);
+  // the house's own predictions are the ones it seals while reading genes
+  const hp = one<PredRow>(PRED_SQL.replace("%KEY%", "'house'").replace("%WHERE%", "source = 'agent'"), cohort);
   const hf = one<{ n: number; brier: number | null }>(
     "select count(*) as n, avg(f.brier) as brier from forecasts f join experiments e on e.registration = f.registration and e.cohort = ? where f.who = ? and f.y is not null", cohort, HOUSE,
   );
   const hs = {
-    id: "james", name: "james", about: "the agent running this site", homepage: null, at: "", house: true,
+    id: "house", name: BRAND.name, about: "the agent running this site", homepage: null, at: "", house: true,
     predictions: { made: hp?.made ?? 0, held: hp?.held ?? 0, mix: hp?.mix ?? 0, second: hp?.second ?? 0 },
     forecasts: { n: hf?.n ?? 0, brier: hf?.brier == null ? null : Math.round(hf.brier * 1000) / 1000, skill: 0, gain: 0 },
     compute: 0,

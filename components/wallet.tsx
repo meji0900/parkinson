@@ -1,26 +1,54 @@
 "use client";
-// Solana wallets through the Wallet Standard (Phantom, Solflare, Backpack and the rest announce
-// themselves), with our own small picker instead of the adapter's stock modal.
-import { ConnectionProvider, WalletProvider, useWallet } from "@solana/wallet-adapter-react";
-import { WalletReadyState } from "@solana/wallet-adapter-base";
-import bs58 from "bs58";
+// EVM wallets through wagmi: every browser wallet that announces itself (EIP-6963: MetaMask, Rabby, Coinbase Wallet,
+// the Robinhood Wallet's own browser and the rest) shows up in our own small picker instead of a stock modal.
+// NEXT_PUBLIC_E2E=1 on a local node swaps in a mock wallet that anvil signs for, so the flows can be clicked through.
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { PUBLIC_RPC, proofMessage } from "@/lib/chain/config";
+import type { Address, TypedDataDefinition } from "viem";
+import {
+  createConfig, http, injected, mock, useConnect, useConnection, useDisconnect, useSignMessage, useSignTypedData,
+  useSwitchChain, WagmiProvider, type Connector,
+} from "wagmi";
+import { CHAIN, NETWORK, proofMessage, PUBLIC_RPC, short } from "@/lib/chain/config";
+
+// anvil's second dev account: a visitor distinct from the agent, so the reward path runs in local tests
+const E2E = NETWORK === "local" && process.env.NEXT_PUBLIC_E2E === "1";
+const config = createConfig({
+  chains: [CHAIN],
+  connectors: E2E ? [mock({ accounts: ["0x70997970C51812dc3A010C7d01b50e0d17dc79C8"], features: { reconnect: true } })] : [injected()],
+  transports: { [CHAIN.id]: http(PUBLIC_RPC) },
+  multiInjectedProviderDiscovery: !E2E,
+  ssr: true,
+});
 
 export function Wallets({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient());
   return (
-    <ConnectionProvider endpoint={PUBLIC_RPC}>
-      <WalletProvider wallets={[]} autoConnect>
-        {children}
-      </WalletProvider>
-    </ConnectionProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    </WagmiProvider>
   );
 }
 
-export const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
+/** the message a wallet error is worth showing (viem's errors carry a short one) */
+export const walletError = (e: unknown) =>
+  ((e as { shortMessage?: string })?.shortMessage ?? (e instanceof Error ? e.message : String(e))).replace(/\.$/, "");
+
+/** wallets that announced themselves; the generic "Injected" one only when a lone window.ethereum is all there is */
+function useWallets(connectors: readonly Connector[]) {
+  const [legacy, setLegacy] = useState(false);
+  useEffect(() => setLegacy(typeof window !== "undefined" && !!(window as { ethereum?: unknown }).ethereum), []);
+  const announced = connectors.filter((c) => c.id !== "injected");
+  if (announced.length || E2E) return E2E ? connectors : announced;
+  return legacy ? connectors.filter((c) => c.id === "injected") : [];
+}
 
 export function ConnectWallet({ label = "Connect wallet" }: { label?: string }) {
-  const { wallets, publicKey, connecting, select, disconnect } = useWallet();
+  const { address, chainId } = useConnection();
+  const { connectors, connect, isPending, error } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { switchChain, isPending: switching } = useSwitchChain();
+  const wallets = useWallets(connectors);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -32,48 +60,63 @@ export function ConnectWallet({ label = "Connect wallet" }: { label?: string }) 
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
   }, [open]);
 
-  if (publicKey) {
+  if (address) {
     return (
       <span className="wallet-on">
-        <span className="dot" aria-hidden /> <span className="mono">{short(publicKey.toBase58())}</span>
+        <span className="dot" aria-hidden /> <span className="mono">{short(address)}</span>
+        {chainId !== CHAIN.id && (
+          <button type="button" className="btn line sm" disabled={switching} onClick={() => switchChain({ chainId: CHAIN.id })}>Switch to {CHAIN.name}</button>
+        )}
         <button type="button" className="btn line sm" onClick={() => disconnect()}>Disconnect</button>
       </span>
     );
   }
-  const ready = wallets.filter((w) => w.readyState === WalletReadyState.Installed || w.readyState === WalletReadyState.Loadable);
   return (
     <div className="picker" ref={box}>
-      <button type="button" className="btn sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} disabled={connecting}>
-        {connecting ? "Connecting…" : label}
+      <button type="button" className="btn sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} disabled={isPending}>
+        {isPending ? "Connecting…" : label}
       </button>
       {open && (
         <div className="picker-list" role="menu">
-          {ready.length ? (
-            ready.map((w) => (
-              <button key={w.adapter.name} type="button" role="menuitem" onClick={() => { select(w.adapter.name); setOpen(false); }}>
-                {w.adapter.icon && <img src={w.adapter.icon} alt="" width={20} height={20} />} {w.adapter.name}
+          {wallets.length ? (
+            wallets.map((w) => (
+              <button key={w.uid} type="button" role="menuitem" onClick={() => { connect({ connector: w }); setOpen(false); }}>
+                {w.icon && <img src={w.icon} alt="" width={20} height={20} />} {w.id === "injected" ? "Browser wallet" : w.name}
               </button>
             ))
           ) : (
             <p className="small" style={{ margin: 8 }}>
-              No Solana wallet found in this browser. Install <a href="https://phantom.com" target="_blank" rel="noreferrer">Phantom</a>,{" "}
-              <a href="https://solflare.com" target="_blank" rel="noreferrer">Solflare</a> or{" "}
-              <a href="https://backpack.app" target="_blank" rel="noreferrer">Backpack</a>, switch it to devnet, then reload.
+              No wallet found in this browser. Install <a href="https://metamask.io" target="_blank" rel="noreferrer">MetaMask</a>,{" "}
+              <a href="https://rabby.io" target="_blank" rel="noreferrer">Rabby</a> or{" "}
+              <a href="https://www.coinbase.com/wallet" target="_blank" rel="noreferrer">Coinbase Wallet</a>, or open this page in the
+              Robinhood Wallet app&apos;s browser, then reload. The wallet adds {CHAIN.name} when it is first needed.
             </p>
           )}
         </div>
       )}
+      {error && !open && <p className="err small" style={{ margin: "6px 0 0" }}>{walletError(error)}</p>}
     </div>
   );
 }
 
-/** signs the short proof message the server checks for the faucet and the queue */
+/** signs the short proof message the server checks for the faucet and the queue (no transaction, no gas) */
 export function useProof() {
-  const { publicKey, signMessage } = useWallet();
+  const { address } = useConnection();
+  const { signMessageAsync } = useSignMessage();
   return async (action: string, extra: Record<string, string> = {}) => {
-    if (!publicKey || !signMessage) throw new Error("this wallet cannot sign messages");
-    const wallet = publicKey.toBase58();
-    const sig = await signMessage(new TextEncoder().encode(proofMessage(action, wallet, extra)));
-    return { wallet, signature: bs58.encode(sig) };
+    if (!address) throw new Error("connect a wallet first");
+    const signature = await signMessageAsync({ message: proofMessage(action, address, extra) });
+    return { wallet: address as Address, signature };
+  };
+}
+
+/** signs typed data on the registry's chain, asking the wallet to switch (and add the chain) first if it is elsewhere */
+export function useSignTyped() {
+  const { chainId } = useConnection();
+  const { switchChainAsync } = useSwitchChain();
+  const { signTypedDataAsync } = useSignTypedData();
+  return async (typed: TypedDataDefinition) => {
+    if (chainId !== CHAIN.id) await switchChainAsync({ chainId: CHAIN.id });
+    return signTypedDataAsync(typed as Parameters<typeof signTypedDataAsync>[0]);
   };
 }
