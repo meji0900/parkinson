@@ -2,10 +2,12 @@
 //   node scripts/chain.mjs build | test | node
 //   node scripts/chain.mjs wallet            make the testnet wallet (.keys/evm-testnet, encrypted) if missing; print its address and balance
 //   node scripts/chain.mjs address           print the testnet wallet's address and balance
-//   node scripts/chain.mjs deploy <local|testnet|mainnet> [--broadcast]
+//   node scripts/chain.mjs deploy <local|testnet|mainnet> [--broadcast] [--fund <ETH for the oracle>]
 // Without --broadcast a deploy is only simulated, and Foundry prints the gas of every transaction.
 // local    anvil's first dev account deploys (no key); run `npm run chain:node` first
-// testnet  the wallet in .keys/evm-testnet deploys and is the oracle too, the cheapest setup (ORACLE= to use another)
+// testnet  the wallet in .keys/evm-testnet deploys and is the oracle too, the cheapest setup (ORACLE= to use another).
+//          TESTNET_ACCOUNT=<Foundry keystore account> deploys and owns it from your own wallet instead (you type its
+//          password); the .keys wallet stays the oracle, and --fund sends it gas in the same run
 // mainnet  your own keystore account deploys (MAINNET_ACCOUNT, default deployer-mainnet; you type its password), the
 //          server's signer must be a different wallet (ORACLE=0x…), and OWNER=<Safe> hands the registry to a multisig
 // RPC_URL overrides the endpoint; otherwise the official one is tried first and dRPC second (for blocked networks).
@@ -14,6 +16,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { parseEther } from "viem";
 
 const root = process.cwd();
 // Foundry runs from inside contracts/ (forge script with --root fails on Windows)
@@ -84,6 +87,7 @@ async function showWallet() {
 
 const [cmd, target] = process.argv.slice(2);
 const broadcast = process.argv.includes("--broadcast");
+const fundArg = process.argv[process.argv.indexOf("--fund") + 1];
 
 if (cmd === "build") {
   run("forge", ["build"], { cwd: contracts });
@@ -106,8 +110,15 @@ if (cmd === "build") {
   const net = NETS[target];
   const rpc = await pickRpc(net);
   const args = ["script", "script/Deploy.s.sol:Deploy", "--rpc-url", rpc];
+  const env = { ...process.env };
+  if (process.argv.includes("--fund")) env.FUND_ORACLE = parseEther(fundArg ?? "").toString();
   if (target === "local") args.push("--unlocked", "--sender", ANVIL_DEPLOYER);
-  if (target === "testnet") args.push("--keystore", KEY, "--password-file", PASS);
+  if (target === "testnet" && process.env.TESTNET_ACCOUNT) {
+    // your wallet deploys and owns the registry; the server keeps the project wallet as its oracle
+    env.ORACLE ??= walletAddress();
+    args.push("--account", process.env.TESTNET_ACCOUNT);
+    console.log(`oracle ${env.ORACLE}${env.FUND_ORACLE ? `, funded with ${fundArg} ETH` : ""}`);
+  } else if (target === "testnet") args.push("--keystore", KEY, "--password-file", PASS);
   if (target === "mainnet") {
     if (!process.env.ORACLE) {
       console.error("mainnet needs ORACLE=<the server's signer address>, a wallet other than the deployer");
@@ -115,14 +126,17 @@ if (cmd === "build") {
     }
     args.push("--account", process.env.MAINNET_ACCOUNT ?? "deployer-mainnet");
   }
-  if (broadcast) {
-    args.push("--broadcast");
-    if (net.explorer) args.push("--verify", "--verifier", "blockscout", "--verifier-url", `${net.explorer}/api/`);
-  }
+  // Sourcify, which Blockscout reads: it is reachable where *.robinhood.com is blocked, and the testnet explorer's own
+  // verifier stopped accepting contracts in October 2026
+  if (broadcast) args.push("--broadcast", ...(net.explorer ? ["--verify", "--verifier", "sourcify"] : []));
   console.log(`${broadcast ? "deploying to" : "simulating on"} chain ${net.id} through ${rpc}`);
-  run("forge", args, { cwd: contracts });
-  if (broadcast) run(process.execPath, [path.join("scripts", "chain-sync.mjs")]);
-  else console.log("\nsimulation only; add --broadcast to send it");
+  const forge = run("forge", args, { cwd: contracts, env, allowFail: broadcast });
+  if (!broadcast) console.log("\nsimulation only; add --broadcast to send it");
+  // a failed verification comes after the transactions went out, so the addresses are recorded either way
+  else if (fs.existsSync(path.join(contracts, "broadcast", "Deploy.s.sol", String(net.id), "run-latest.json"))) {
+    run(process.execPath, [path.join("scripts", "chain-sync.mjs")]);
+  }
+  if (forge.status) process.exit(forge.status);
 } else {
   console.log(fs.readFileSync(new URL(import.meta.url), "utf8").split("\n").filter((l) => l.startsWith("//")).map((l) => l.slice(3)).join("\n"));
   process.exit(cmd ? 1 : 0);
