@@ -1,5 +1,5 @@
-// The mark: an Archimedes spiral, the drawing a movement-disorder clinic asks for at the bedside. The line
-// carries a small regular wobble, the way a tremor writes itself into the spiral; the brown dot is the pen.
+// The Archimedes spiral a movement-disorder clinic asks for at the bedside, with the small regular wobble a tremor writes
+// into it. The figures and the entry gate draw it; it was the site's mark before the engraved profile below.
 export function spiralPoints(opts: { turns?: number; r0?: number; r1?: number; wobble?: number; cycles?: number; n?: number; cx?: number; cy?: number } = {}) {
   const { turns = 3.1, r0 = 1.4, r1 = 12.6, wobble = 0.6, cycles = 7, n = 240, cx = 16, cy = 16 } = opts;
   const pts: [number, number][] = [];
@@ -12,17 +12,10 @@ export function spiralPoints(opts: { turns?: number; r0?: number; r1?: number; w
   return pts;
 }
 
-const toPath = (pts: [number, number][]) => "M" + pts.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join("L");
-const PTS = spiralPoints();
-const PATH = toPath(PTS);
-const [EX, EY] = PTS[PTS.length - 1];
-
+/** the mark: the engraved profile from the logo, cropped round (an illustration, not a likeness of James Parkinson) */
 export function Mark({ size = 26, title }: { size?: number; title?: string }) {
   return (
-    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden={title ? undefined : true} role={title ? "img" : undefined} fill="none">
-      {title && <title>{title}</title>}
-      <path d={PATH} stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={EX} cy={EY} r="2.1" fill="#8b5a2b" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element -- a 128 px webp; next/image adds nothing here
+    <img className="mark" src="/brand/mark.webp" width={size} height={size} alt={title ?? ""} aria-hidden={title ? undefined : true} decoding="async" />
   );
 }

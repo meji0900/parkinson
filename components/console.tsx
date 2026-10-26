@@ -186,7 +186,7 @@ export function Console({ examples, region = "substantia nigra" }: { examples: s
           <span className="mode">{mode}</span>
         </div>
         <div className="slide-glass">
-          <div className="room-bar"><span><Mark size={16} /> the agent, live</span><span>{mode}</span></div>
+          <div className="room-bar"><span><Mark size={18} /> the agent, live</span><span>{mode}</span></div>
           <div className="room-body" ref={termRef} role="log" aria-live="off" aria-label="Agent console" tabIndex={0} />
           <form className="room-in" onSubmit={submit} autoComplete="off">
             <label htmlFor="gene-input" className="prompt">$</label>

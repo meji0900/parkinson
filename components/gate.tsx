@@ -1,5 +1,5 @@
 "use client";
-// The entry gate. A spiral is drawn the way a patient draws one at the bedside: from the centre out,
+// The entry gate. Around the logo a spiral is drawn the way a patient draws one at the bedside, outward,
 // with a 5 Hz tremor riding on the line. It lifts as soon as the agent's live feed answers, and only on
 // the first page of a visit. A tiny inline script hides it before paint on later loads, and a CSS
 // timeout lifts it even if scripts never run.
@@ -30,7 +30,8 @@ export function Gate() {
     c.width = S * dpr; c.height = S * dpr;
     const ctx = c.getContext("2d")!;
     ctx.scale(dpr, dpr);
-    const DRAW = 1300, TURNS = 3.2, R0 = 3, R1 = 74, N = 420;
+    // the spiral starts just outside the round portrait (radius 42) and coils out to the edge of the canvas
+    const DRAW = 1300, TURNS = 1.7, R0 = 47, R1 = 77, N = 320;
     let raf = 0, t0 = 0, connected = false, done = false;
     const finish = () => {
       if (done) return;
@@ -50,9 +51,9 @@ export function Gate() {
       for (let i = 0; i <= steps; i++) {
         const t = i / N;
         const th = t * TURNS * 2 * Math.PI;
-        // a 5 Hz tremor over the twelve seconds a patient takes to draw it: about sixty cycles along the line,
-        // the wobble growing as the hand travels out (the animation itself runs faster than the hand)
-        const r = R0 + (R1 - R0) * t + 3.2 * t * Math.sin(2 * Math.PI * 60 * t);
+        // a 5 Hz tremor over the seconds a patient takes to draw it: about forty cycles along the line, the
+        // wobble growing as the hand travels out (the animation itself runs faster than the hand)
+        const r = R0 + (R1 - R0) * t + 3.2 * t * Math.sin(2 * Math.PI * 40 * t);
         x = S / 2 + r * Math.cos(th); y = S / 2 + r * Math.sin(th);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
@@ -81,7 +82,11 @@ export function Gate() {
     <>
       <script dangerouslySetInnerHTML={{ __html: EARLY }} />
       <div className={`gate${gone ? " gone" : ""}`} aria-hidden={gone} role="status" aria-label="Loading">
-        <canvas ref={canvas} width={168} height={168} aria-hidden="true" />
+        <div className="gate-art">
+          <canvas ref={canvas} width={168} height={168} aria-hidden="true" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- a 256 px webp; next/image adds nothing here */}
+          <img className="gate-mark" src="/brand/portrait.webp" width={84} height={84} alt="" />
+        </div>
         <p className="gate-name">{BRAND.name}</p>
         <p className="gate-status" aria-live="polite">{status}</p>
       </div>

@@ -109,8 +109,8 @@ export function SpiralTest() {
       </svg>
       <figcaption>
         The spiral test, a standard bedside drawing in movement-disorder clinics: a tremor writes itself into the line as a regular wobble, and
-        in Parkinson&apos;s the spiral may also shrink as it goes. Generated for this page, not a patient&apos;s drawing. The same spiral is this
-        site&apos;s mark.
+        in Parkinson&apos;s the spiral may also shrink as it goes. Generated for this page, not a patient&apos;s drawing. The same spiral is drawn
+        when this site opens.
       </figcaption>
     </figure>
   );

@@ -11,7 +11,7 @@ export function Header() {
   return (
     <header className="top">
       <Link href="/" className="brand" aria-label={`${BRAND.name}, home`}>
-        <Mark /> <span>{BRAND.name}</span>
+        <Mark size={30} /> <span>{BRAND.name}</span>
       </Link>
       <LivePulse />
       <nav aria-label="Main">

@@ -14,7 +14,7 @@ export function Frontispiece() {
       </div>
       <figcaption>
         James Parkinson described the shaking palsy in this essay, London, 1817; the plaque is from his house in Hoxton Square. No
-        portrait of him survives. <a href={page.source}>Wellcome Collection</a>, <a href={page.licenseUrl}>{page.license}</a>; plaque
+        portrait of him survives; the profile in this site&apos;s logo is an illustration, not his likeness. <a href={page.source}>Wellcome Collection</a>, <a href={page.licenseUrl}>{page.license}</a>; plaque
         photograph by <a href={seal.source}>Jnicho02</a>, <a href={seal.licenseUrl}>{seal.license}</a>.
       </figcaption>
     </figure>
