@@ -3,7 +3,7 @@
 // taking this site's word for it.
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
-import { PUBLIC_RPC, short } from "@/lib/chain/config";
+import { NETWORK, PUBLIC_RPC, short } from "@/lib/chain/config";
 import type { ContractProof } from "@/lib/chain/proof";
 
 const when = (s: string) =>
@@ -29,7 +29,7 @@ export function ProofSlip({ p }: { p: ContractProof }) {
       <p className="slip-head">
         <b>{BRAND.name.toUpperCase()} REGISTRY</b>
         {p.chain.name}
-        <br />chain {p.chain.id}
+        <br />chain {p.chain.id} · {NETWORK}
         {p.at && <><br />deployed {when(p.at)}</>}
       </p>
       <hr />
@@ -92,7 +92,7 @@ export function ContractProofLine({ p }: { p: ContractProof }) {
   return (
     <p className="proof-line">
       <span>registry <Addr id={p.registry.address} href={p.registry.link} /></span>
-      <span>{p.chain.name}{p.at ? `, deployed ${day(p.at)}` : ""}</span>
+      <span>{p.chain.name}{NETWORK === "mainnet" ? " mainnet" : ""}{p.at ? `, deployed ${day(p.at)}` : ""}</span>
       {m && <b>source verified{m === "exact_match" ? ", exact match" : ""}</b>}
       <Link href="/chain#proof">Proof of deployment</Link>
     </p>

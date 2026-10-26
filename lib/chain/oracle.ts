@@ -152,12 +152,23 @@ export async function retryResults(): Promise<number> {
 // ---------------------------------------------------------------- wallet predictions (stored, the agent pays)
 type Draft = { gene: string; group: string; axis: string; by?: string | null; wallet: Address };
 
+// The agent pays every wallet prediction's gas, and new wallets cost nothing, so on mainnet the number it pays for in a day
+// is capped: WALLET_PREDICTIONS_PER_DAY (default 30 on mainnet; 0 = no cap, the default elsewhere)
+const WALLET_DAILY = Number(process.env.WALLET_PREDICTIONS_PER_DAY ?? (NETWORK === "mainnet" ? 30 : 0));
+function checkWalletQuota() {
+  if (!WALLET_DAILY) return;
+  const since = new Date(Date.now() - 864e5).toISOString().replace(/\.\d{3}Z$/, "Z");
+  const n = one<{ n: number }>("select count(*) as n from experiments where source = 'wallet' and chain = ? and at >= ?", HERE, since)?.n ?? 0;
+  if (n >= WALLET_DAILY) throw new Error(`the agent pays the gas for ${WALLET_DAILY} wallet predictions a day, and today's are taken; try again later`);
+}
+
 export async function prepareWalletSeal(d: Draft) {
   if ((await chainMode()) !== "contract") throw new Error("wallet predictions need the registry contract, which is not live on this network yet");
   if (!isGroup(d.group) || !isAxis(d.axis)) throw new Error("unknown cell group or outcome");
   const registration = registrationOf(d.gene, d.group, d.axis, cohorts().primary.id);
   const existing = getExperiment(registration);
   if (existing) return { repeat: true as const, registration, exp: existing };
+  checkWalletQuota();
   const onChain = await publicClient().readContract({ address: REGISTRY!, abi: registryAbi, functionName: "prediction", args: [bytes32(registration)] });
   if (onChain.status !== 0) throw new Error("this prediction is already registered on-chain; it is picked up and tested within a few minutes");
   const typed = registerTypedData(registration, d.gene, GROUPS.indexOf(d.group), AXES.indexOf(d.axis));
@@ -180,6 +191,7 @@ export async function submitWalletSeal(registration: string, signature: string):
   const valid = (await verifyTypedData({ ...typed, address: p.wallet, signature: sig }).catch(() => false))
     || (await publicClient().verifyTypedData({ ...typed, address: p.wallet, signature: sig }).catch(() => false));
   if (!valid) throw new Error("the signature does not match this wallet and prediction");
+  checkWalletQuota();
   const tx = await confirm(await wallet().writeContract({
     ...registry(), functionName: "registerFor",
     args: [bytes32(registration), p.gene, GROUPS.indexOf(p.grp), AXES.indexOf(p.axis), p.wallet, sig],
