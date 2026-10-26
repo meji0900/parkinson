@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Background, Limits, Sources } from "@/components/background";
 import { Bench } from "@/components/bench";
+import { ContractProofLine } from "@/components/contract-proof";
 import { Console } from "@/components/console";
 import { DatScan } from "@/components/figures";
 import { Frontispiece } from "@/components/frontispiece";
@@ -18,6 +19,7 @@ import { listCases } from "@/lib/atlas/swarm";
 import { BRAND } from "@/lib/brand";
 import { CHAIN } from "@/lib/chain/config";
 import { chainMode } from "@/lib/chain/oracle";
+import { contractProof } from "@/lib/chain/proof";
 import { one } from "@/lib/server/db";
 import { agentInterval } from "@/lib/server/events";
 import { within } from "@/lib/server/timeout";
@@ -30,7 +32,7 @@ const n = (x: number, one: string, many: string) => `${x.toLocaleString("en")} $
 const every = (s: number) => (s % 60 === 0 ? (s === 60 ? "minute" : `${s / 60} minutes`) : s === 150 ? "two and a half minutes" : `${s} seconds`);
 
 export default async function Home() {
-  const mode = await within(chainMode(), 2500, "off" as const);
+  const [mode, proof] = await Promise.all([within(chainMode(), 2500, "off" as const), within(contractProof(), 2500, null)]);
   const atlas = atlasInfo();
   const currentCohort = cohorts().primary.id;
   const f = funnel();
@@ -254,6 +256,7 @@ export default async function Home() {
           the wallet that made it a reward. Holders can put a gene at the front of the agent&apos;s queue.{" "}
           {mode === "off" ? "On-chain writes are off on this server." : mode === "memo" ? "On this server seals and results are written as memo transactions." : "The registry contract is live."}
         </p>
+        {proof && <ContractProofLine p={proof} />}
         <p><Link className="btn line" href="/chain">Open the registry</Link></p>
       </Sec>
 

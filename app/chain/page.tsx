@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { ChainDashboard } from "@/components/chain-dashboard";
+import { ContractProofPanel } from "@/components/contract-proof";
 import { Sec } from "@/components/sections";
 import { BRAND } from "@/lib/brand";
 import { CHAIN, explorer, GATE_AMOUNT, GATE_TOKEN, NETWORK, short, TOKEN_SYMBOL } from "@/lib/chain/config";
 import { chainStatus } from "@/lib/chain/oracle";
+import { contractProof } from "@/lib/chain/proof";
 import { within } from "@/lib/server/timeout";
 import { leaderboard } from "@/lib/views";
 
@@ -18,7 +20,7 @@ const A = ({ id, kind = "address", chain }: { id: string; kind?: "address" | "tx
 };
 
 export default async function ChainPage() {
-  const s = await within(chainStatus(), 6000, null);
+  const [s, proof] = await Promise.all([within(chainStatus(), 6000, null), within(contractProof(), 6000, null)]);
   const board = leaderboard();
   const mode = s?.mode ?? "off";
   const st = s?.state;
@@ -38,6 +40,11 @@ export default async function ChainPage() {
         <p className="stat-line">mode: <b>{mode === "contract" ? "contract live" : mode === "memo" ? "memo transactions" : "off on this server"}</b></p>
       </section>
       <article>
+        <Sec id="proof" title="Proof of deployment">
+          {proof
+            ? <ContractProofPanel p={proof} />
+            : <p className="quiet">The registry is not deployed on {CHAIN.name} yet; its address, block and verified source appear here once it is.</p>}
+        </Sec>
         <Sec title="Your wallet">
           <ChainDashboard mode={mode} faucet={!!st && st.faucetAmount > 0} />
         </Sec>

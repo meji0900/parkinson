@@ -25,16 +25,27 @@ const dir = path.join(root, "contracts", "broadcast", "Deploy.s.sol");
 for (const chainId of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
   const run = path.join(dir, chainId, "run-latest.json");
   if (!fs.existsSync(run)) continue;
-  const { transactions = [], receipts = [] } = JSON.parse(fs.readFileSync(run, "utf8"));
-  const made = {};
+  const { transactions = [], receipts = [], timestamp } = JSON.parse(fs.readFileSync(run, "utf8"));
+  const made = {}, txs = {};
+  let deployer = null;
   for (const tx of transactions) {
-    if (tx.transactionType === "CREATE" && tx.contractName && tx.contractAddress) made[tx.contractName] = getAddress(tx.contractAddress);
+    if (tx.transactionType !== "CREATE" || !tx.contractName || !tx.contractAddress) continue;
+    made[tx.contractName] = getAddress(tx.contractAddress);
+    txs[tx.contractName] = tx.hash;
+    deployer ??= getAddress(tx.transaction.from);
   }
   if (!made.ParkinsonRegistry) continue;
   const at = receipts.find((r) => r.contractAddress?.toLowerCase() === made.ParkinsonRegistry.toLowerCase());
-  // a later deploy without a test token must not keep the old one
-  deployments[chainId] = { ParkinsonRegistry: made.ParkinsonRegistry, ...(made.ParkinsonTestToken ? { ParkinsonTestToken: made.ParkinsonTestToken } : {}), block: at ? Number(at.blockNumber) : null };
-  console.log(`chain ${chainId}: ${Object.entries(deployments[chainId]).map(([k, v]) => `${k} ${v}`).join(", ")}`);
+  // the page shows these as the proof of deployment; a later deploy without a test token must not keep the old one
+  deployments[chainId] = {
+    ParkinsonRegistry: made.ParkinsonRegistry,
+    ...(made.ParkinsonTestToken ? { ParkinsonTestToken: made.ParkinsonTestToken } : {}),
+    block: at ? Number(at.blockNumber) : null,
+    at: timestamp ? new Date(timestamp).toISOString().replace(/\.\d{3}Z$/, "Z") : null,
+    deployer,
+    txs,
+  };
+  console.log(`chain ${chainId}: ${Object.entries(deployments[chainId]).filter(([, v]) => typeof v !== "object").map(([k, v]) => `${k} ${v}`).join(", ")}`);
 }
 fs.writeFileSync(file, JSON.stringify(deployments, null, 2) + "\n");
 console.log(`wrote ${path.relative(root, file)}`);

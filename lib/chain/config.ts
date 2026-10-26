@@ -17,8 +17,12 @@ export const CHAIN: Chain = defineChain({ ...BASE, rpcUrls: { default: { http: [
 /** a second public endpoint per chain (dRPC, one of the providers Robinhood's docs list) that the server falls back to */
 export const BACKUP_RPC: Record<number, string> = { [robinhoodTestnet.id]: "https://robinhood-testnet.drpc.org", [robinhood.id]: "https://robinhood.drpc.org" };
 
-type Deployment = { ParkinsonRegistry?: string; ParkinsonTestToken?: string; block?: number | null };
-const DEPLOYED: Deployment = (deployments as Record<string, Deployment>)[String(CHAIN.id)] ?? {};
+export type Deployment = {
+  ParkinsonRegistry?: string; ParkinsonTestToken?: string; block?: number | null; at?: string | null; deployer?: string | null;
+  txs?: { ParkinsonRegistry?: string; ParkinsonTestToken?: string };
+};
+/** this network's deployment as the Deploy script broadcast it: addresses, block, time, deployer, transactions */
+export const DEPLOYED: Deployment = (deployments as Record<string, Deployment>)[String(CHAIN.id)] ?? {};
 const address = (...xs: (string | undefined)[]) => (xs.find((x) => x && /^0x[0-9a-fA-F]{40}$/.test(x)) ?? null) as Address | null;
 
 export const REGISTRY = address(process.env.NEXT_PUBLIC_REGISTRY_ADDRESS, DEPLOYED.ParkinsonRegistry);
