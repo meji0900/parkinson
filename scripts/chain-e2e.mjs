@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createDecipheriv, pbkdf2Sync, scryptSync } from "node:crypto";
 import { createPublicClient, createWalletClient, defineChain, erc20Abi, formatEther, formatUnits, getAddress, http, keccak256, parseAbi } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const BASE = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
 const CRON = process.env.CRON_SECRET;
@@ -20,9 +20,12 @@ const RPCS = {
 const ANVIL_VISITOR = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 const GROUPS = ["dopamine neurons", "GABA neurons", "glutamate neurons", "microglia", "astrocytes", "oligodendrocytes", "OPCs", "endothelial"];
 const AXES = ["braak", "nigra", "resilience"];
-// candidates for the wallet prediction; on a real atlas few predictions hold, and the reward step is then skipped with a
-// note rather than failed
+// candidates for the wallet prediction: first the ones that hold on the simulated cohort (so the reward path runs there),
+// then every other gene x cell group x outcome, so a long-running ledger that already holds the first ones still has a
+// fresh one. On a real atlas few predictions hold, and the reward step is then skipped with a note rather than failed.
 const HOLDS = ["SLC6A3", "PACRG", "NR1H2", "MASTL", "TH", "KCNJ6", "DDC", "ALDH1A1", "RET", "SLC18A2"].map((gene) => ({ gene, group: "dopamine neurons", axis: "braak" }));
+const MORE = ["LRRK2", "GBA1", "SNCA", "PINK1", "PRKN", "VPS35", "TMEM175", "GPNMB", "RAB32", "SYT11", "BST1", "DNAJC6"].flatMap((gene) =>
+  ["dopamine neurons", "microglia", "astrocytes", "oligodendrocytes"].flatMap((group) => ["braak", "resilience", "nigra"].map((axis) => ({ gene, group, axis }))));
 const registry = parseAbi([
   "function register(bytes32 hash, string gene, uint8 group, uint8 axis)",
   "function reward(bytes32 hash)",
@@ -77,7 +80,20 @@ const account = chainId === 31337 ? getAddress(ANVIL_VISITOR) : privateKeyToAcco
 const visitor = createWalletClient({ account, chain, transport: http(RPC) });
 const wallet = typeof account === "string" ? account : account.address;
 const REG = s0.registry, TOKEN = s0.gate?.token;
-const tokens = async () => (TOKEN ? Number(formatUnits(await pub.readContract({ address: TOKEN, abi: erc20Abi, functionName: "balanceOf", args: [wallet] }), 18)) : 0);
+// signing a prediction costs the predictor nothing (the agent registers it and pays), so off the local node a fresh key
+// signs it: the server then pays the reward itself, and the per-wallet limit on prepared predictions starts from zero
+const predictor = chainId === 31337 ? account : privateKeyToAccount(generatePrivateKey());
+const predictorAddress = typeof predictor === "string" ? predictor : predictor.address;
+const tokens = async (owner = wallet) => (TOKEN ? Number(formatUnits(await pub.readContract({ address: TOKEN, abi: erc20Abi, functionName: "balanceOf", args: [owner] }), 18)) : 0);
+/** the balance once the node we read from has caught up with a transfer just made */
+async function tokensAfter(before, owner = wallet) {
+  for (let i = 0; i < 8; i++) {
+    const now = await tokens(owner);
+    if (now !== before) return now;
+    await wait(1500);
+  }
+  return tokens(owner);
+}
 /** a registry call from the visitor that must not revert */
 async function send(call) {
   const hash = await visitor.writeContract({ account, address: REG, abi: registry, ...call });
@@ -120,7 +136,7 @@ await step("the faucet sends test tokens to the wallet", async () => {
   const r = await api("/api/chain/faucet", { wallet, signature: await visitor.signMessage({ account, message: proof("faucet", wallet) }) });
   if (r.status === 429) return { note: `skipped (${r.error}); balance ${before}` };
   need(r.tx, r.error ?? "no transaction");
-  return { txs: r.tx, note: `${before} → ${await tokens()} tPARKINSON` };
+  return { txs: r.tx, note: `${before} → ${await tokensAfter(before)} tPARKINSON` };
 });
 
 await step("a holder puts a gene at the front of the queue", async () => {
@@ -132,34 +148,46 @@ await step("a holder puts a gene at the front of the queue", async () => {
 
 let held = null;
 await step("wallet prediction: the wallet signs (EIP-712), the agent registers it and pays, then it is tested and resolved", async () => {
-  for (const p of HOLDS) {
-    const prep = await api("/api/predict/prepare", { ...p, by: "e2e", wallet });
+  // skip what the ledger or the contract already holds before asking the server, which limits prepares per wallet
+  const cohort = (await api("/api/atlas")).id;
+  const seen = new Map();
+  for (const p of [...HOLDS, ...MORE]) {
+    if (!seen.has(p.gene)) seen.set(p.gene, new Set(((await api(`/api/experiments?gene=${p.gene}&limit=500`)).results ?? []).map((e) => e.registration)));
+    const reg = await sha256(canon({ axis: p.axis, cohort, gene: p.gene, group: p.group, protocol: 2 }));
+    if (seen.get(p.gene).has(reg) || (await pub.readContract({ address: REG, abi: registry, functionName: "prediction", args: [`0x${reg}`] })).status !== 0) continue;
+    const prep = await api("/api/predict/prepare", { ...p, by: "e2e", wallet: predictorAddress });
     // made before, here or (by an earlier run against another ledger) on this contract
     if (prep.repeat || /already registered on-chain/.test(prep.error ?? "")) continue;
     need(prep.typed, prep.error ?? "nothing to sign");
-    const signature = await visitor.signTypedData({ account, ...prep.typed });
-    const before = await tokens();
+    const signature = await visitor.signTypedData({ account: predictor, ...prep.typed });
+    const before = await tokens(predictorAddress);
     const r = await api("/api/predict/submit", { registration: prep.registration, signature });
     need(r.registration, r.error ?? "submit failed");
     need(r.chain_status === "resolved" || r.chain_status === "rewarded", `chain status ${r.chain_status}`);
-    const onChain = await pub.readContract({ address: REG, abi: registry, functionName: "prediction", args: [`0x${r.registration}`] });
-    need(onChain.predictor.toLowerCase() === wallet.toLowerCase(), `stored predictor is ${onChain.predictor}`);
+    // the server waited for its own receipts; the node this script reads from can be a block or two behind
+    let onChain;
+    for (let i = 0; i < 10; i++) {
+      onChain = await pub.readContract({ address: REG, abi: registry, functionName: "prediction", args: [`0x${r.registration}`] });
+      if (onChain.status !== 1) break;
+      await wait(1500);
+    }
+    need(onChain.predictor.toLowerCase() === predictorAddress.toLowerCase(), `stored predictor is ${onChain.predictor}`);
     need(onChain.status === (r.passed ? 2 : 3), `stored status ${onChain.status}`);
     held = r;
-    const paid = r.reward_tx ? `, rewarded ${(await tokens()) - before} tPARKINSON` : "";
-    return { txs: [r.chain_tx, r.resolve_tx, r.reward_tx], note: `${r.gene} ${r.axis}: ${r.passed ? "held" : "failed"}, ${r.chain_status}${paid}` };
+    const paid = r.reward_tx ? `, rewarded ${(await tokensAfter(before, predictorAddress)) - before} tPARKINSON` : "";
+    return { txs: [r.chain_tx, r.resolve_tx, r.reward_tx], note: `${r.gene} ${r.group} ${r.axis} signed by ${predictorAddress.slice(0, 10)}…: ${r.passed ? "held" : "failed"}, ${r.chain_status}${paid}` };
   }
-  throw new Error("every candidate was registered before; add new ones to HOLDS");
+  throw new Error("every candidate was registered before; add genes to MORE");
 });
 
 await step("the predictor of a replicated prediction is rewarded once", async () => {
   if (!held?.passed) return { note: "skipped: the wallet prediction did not hold on this atlas, so there is nothing to reward" };
   if (held.reward_tx) return { note: "paid by the server in the step before" };
-  if (wallet.toLowerCase() !== s0.agent?.toLowerCase()) throw new Error("the server did not pay the reward");
-  // one wallet: the server never pays itself, so the oracle (this wallet) sends it directly
-  const before = await tokens();
+  if (predictorAddress.toLowerCase() !== s0.agent?.toLowerCase()) throw new Error("the server did not pay the reward");
+  // the predictor is the agent itself: the server never pays itself, so the oracle (this wallet) sends it directly
+  const before = await tokens(predictorAddress);
   const tx = await send({ functionName: "reward", args: [`0x${held.registration}`] });
-  return { txs: tx, note: `${before} → ${await tokens()} tPARKINSON` };
+  return { txs: tx, note: `${before} → ${await tokensAfter(before, predictorAddress)} tPARKINSON` };
 });
 
 await step("a prediction registered straight on the contract is picked up and tested by the server", async () => {
