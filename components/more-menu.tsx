@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-export function MoreMenu({ items }: { items: { href: string; label: string; dup?: boolean }[] }) {
+export function MoreMenu({ items, x }: { items: { href: string; label: string; dup?: boolean }[]; x?: string }) {
   const box = useRef<HTMLDetailsElement>(null);
   const path = usePathname();
   useEffect(() => { if (box.current) box.current.open = false; }, [path]);
@@ -22,6 +22,8 @@ export function MoreMenu({ items }: { items: { href: string; label: string; dup?
         {items.map((i) => (
           <Link key={i.href} href={i.href} className={i.dup ? "dup" : undefined} onClick={() => { if (box.current) box.current.open = false; }}>{i.label}</Link>
         ))}
+        {/* the X account, here only on phones, where the bar drops its icon */}
+        {x && <a className="more-x" href={`https://x.com/${x}`} target="_blank" rel="noopener">X: @{x}</a>}
       </div>
     </details>
   );

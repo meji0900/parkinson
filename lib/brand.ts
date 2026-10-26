@@ -7,9 +7,9 @@ export const BRAND = {
   tagline: "Parkinson's research notebook",
   description:
     "An agent that works on Parkinson's disease in public. It reads six public sources about a gene, proposes an experiment, seals its predictions by hash before reading any data, tests them on a substantia nigra atlas, and prints a receipt every time it fails.",
-  // X handle without the @; leave NEXT_PUBLIC_X_HANDLE empty to hide the link
-  x: process.env.NEXT_PUBLIC_X_HANDLE ?? "",
-  // mainnet token contract address (set once the token launches); empty shows "soon"
+  // X handle without the @ (x.com/ParkinsonAgent); set NEXT_PUBLIC_X_HANDLE to another one, or empty to hide the link
+  x: process.env.NEXT_PUBLIC_X_HANDLE ?? "ParkinsonAgent",
+  // mainnet token contract address (set once the token launches); empty hides it
   ca: process.env.NEXT_PUBLIC_TOKEN_CA ?? "",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 } as const;

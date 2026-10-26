@@ -11,7 +11,7 @@ function useCopy(text: string) {
 
 export function CopyCA({ ca }: { ca: string }) {
   const { copied, copy } = useCopy(ca);
-  if (!ca) return <span className="ca" title="The token contract address is published here at launch"><span className="ca-label">CA</span> soon</span>;
+  if (!ca) return null;
   return (
     <button type="button" className="ca" title={`Copy contract address ${ca}`} aria-label="Copy contract address" onClick={copy}>
       <span className="ca-label">CA</span> <span>{copied ? "copied" : `${ca.slice(0, 4)}…${ca.slice(-4)}`}</span>
