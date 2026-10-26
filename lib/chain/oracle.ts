@@ -17,7 +17,7 @@ import { BACKUP_RPC, CHAIN, GATE_TOKEN, NETWORK, PUBLIC_RPC, REGISTRY, registerT
 import { agentAccount } from "./keys";
 
 export type Mode = "contract" | "memo" | "off";
-const PENDING = 1;
+const NONE = 0, PENDING = 1;
 const HERE = String(CHAIN.id);
 
 const g = globalThis as unknown as {
@@ -116,6 +116,8 @@ async function resolveStored(x: Experiment): Promise<void> {
     // a result (or reward) that went through while the last attempt timed out is not written twice
     const before = await publicClient().readContract({ address: REGISTRY!, abi: registryAbi, functionName: "prediction", args: [hash] });
     rewarded = before.rewarded;
+    // a node a block or two behind does not know the registration yet: retried on the next chores, never taken as resolved
+    if (before.status === NONE) throw new Error("the RPC node has not seen this registration yet");
     const tx = before.status === PENDING
       ? await confirm(await wallet().writeContract({ ...registry(), functionName: "resolve", args: [hash, !!x.passed, i16(x.discovery?.effect), i16(x.replication?.effect), x.receipt ?? 0] }))
       : "on-chain";
