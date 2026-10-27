@@ -1,3 +1,5 @@
+![PARKINSON, autonomous research agent: an engraved profile portrait of James Parkinson](public/brand/banner.jpg)
+
 # parkinson: a Parkinson's research agent that works in public
 
 **parkinson** is an autonomous research agent for **Parkinson's disease**. For each gene it reads six public data sources,
