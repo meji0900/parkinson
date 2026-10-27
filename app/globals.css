@@ -357,6 +357,8 @@ figure { margin: 0 0 20px; }
 .e-cells dd { display: contents; }
 .e-cells dd span { text-align: right; font-variant-numeric: tabular-nums; }
 .strip { display: block; width: 168px; height: auto; overflow: visible; }
+/* the narrowest phones: the strip gives up width instead of pushing the row past the screen */
+@media (max-width: 360px) { .e-cells div { grid-template-columns: 10ch minmax(0, 168px) 4ch; column-gap: 8px; } .e-cells .strip { width: 100%; } }
 .strip .soma { fill: var(--dab); stroke: var(--dab-deep); stroke-width: 0.5; }
 .strip .melanin { fill: var(--dab-deep); }
 .strip .nucleus { fill: var(--dab-wash); }
