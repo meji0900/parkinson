@@ -14,7 +14,8 @@ export function CopyCA({ ca }: { ca: string }) {
   if (!ca) return null;
   return (
     <button type="button" className="ca" title={`Copy contract address ${ca}`} aria-label="Copy contract address" onClick={copy}>
-      <span className="ca-label">CA</span> <span>{copied ? "copied" : `${ca.slice(0, 4)}…${ca.slice(-4)}`}</span>
+      {/* phones drop the 0x… head; a tap still copies the whole address */}
+      <span className="ca-label">CA</span> <span>{copied ? "copied" : <><span className="ca-head">{ca.slice(0, 4)}</span>…{ca.slice(-4)}</>}</span>
     </button>
   );
 }

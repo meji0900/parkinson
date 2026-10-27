@@ -9,7 +9,7 @@ const KEEP = new Set(["/#live", "/#predict"]);
 
 export function Header() {
   return (
-    <header className="top">
+    <header className={BRAND.ca ? "top has-ca" : "top"}>
       <Link href="/" className="brand" aria-label={`${BRAND.name}, home`}>
         <Mark size={30} /> <span>{BRAND.name}</span>
       </Link>
