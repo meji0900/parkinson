@@ -1,0 +1,111 @@
+parkinson: notices
+==================
+
+Code
+----
+The source code in this repository is released under the MIT License (LICENSE), unless a file says otherwise.
+The Solidity contracts in contracts/src carry SPDX-License-Identifier: MIT.
+
+Not covered by the MIT License
+------------------------------
+The project name and identity ("parkinson", "ParkinsonAgent", the $PARKINSON ticker) and its logo and artwork are not
+licensed: public/brand/*, app/icon.png, app/apple-icon.png, app/opengraph-image.png, app/twitter-image.png. All rights
+reserved. Forks are welcome, under another name and logo; they must not present themselves as this project, its agent
+or its token.
+
+The official deployment is https://parkinsonagent.tech, with, on Robinhood Chain mainnet (chain 4663):
+  registry         0x440F3f70baCf817063571BEf948b7C81dB7925B5
+  $PARKINSON token 0x2Fb8471C98A19106E837138ca6064678e06CcA48
+Any other address is not this project.
+
+Third-party data (data/atlas): processed per-cell-type tables; the original terms apply
+--------------------------------------------------------------------------------------
+  pd-sn-kamath
+    Kamath T. et al. Single-cell genomic profiling of human dopamine neurons identifies a population that selectively
+    degenerates in Parkinson's disease. Nat Neurosci 25, 588-595 (2022). doi:10.1038/s41593-022-01061-1
+    CELLxGENE, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+  pd-snpc
+    Volpato D. et al. A deep cellular atlas of the human ventral substantia nigra in Parkinson's identifies a genetic
+    and molecular overlap with insulin resistance. medRxiv (2025), preprint. NCBI GEO GSE329625 (public data); cite the
+    authors when you use it.
+
+Images (public/img): each keeps its own licence
+-----------------------------------------------
+  public/img/essay.webp
+    Wellcome Collection (L0004791) · CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+    https://commons.wikimedia.org/wiki/File:J._Parkinson%2C_An_essay_on_the_shaking_palsy_Wellcome_L0004791.jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/hoxton.webp
+    Wellcome Collection (L0011427) · CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+    https://commons.wikimedia.org/wiki/File:James_Parkinson%2C_No._1_Hoxton_Square_Wellcome_L0011427.jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/plaque.webp
+    Photograph by Jnicho02 · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+    https://commons.wikimedia.org/wiki/File:James_Parkinson_plaque_(cropped).jpg
+    changes: resized, converted to WebP
+  public/img/charcot.webp
+    Nadar, 1890, Bibliothèque nationale de France · public domain
+    https://commons.wikimedia.org/wiki/File:Charcot_Jean-Martin_Gallica_Nadar.jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/gowers.webp
+    W. R. Gowers · public domain
+    https://commons.wikimedia.org/wiki/File:Pierre_D._by_William_Richard_Gowers_after_Albert_Londe_(attrib).png
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/richer.webp
+    Sorbonne Université collections · Licence Ouverte 2.0 (https://www.etalab.gouv.fr/licence-ouverte-open-licence)
+    https://commons.wikimedia.org/wiki/File:Paul_Richer_-_Statuette_de_femme_atteinte_de_la_maladie_de_Parkinson%2C_dite_la_Parkinsonienne_(SU.PA.2021.0.26).jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/nis43.webp
+    Paul Richer · Licence Ouverte (https://www.etalab.gouv.fr/licence-ouverte-open-licence)
+    https://commons.wikimedia.org/wiki/File:Nouvelle_iconographie_de_la_Salp%C3%AAtri%C3%A8re_-_Tome_01_-_Planche_43.jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/hypomimia.webp
+    Paul Richer · public domain
+    https://commons.wikimedia.org/wiki/File:Drawing_of_face_of_parkinsons_disease_patient_showing_hypomimia.jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/charcot-drawing.webp
+    J.-M. Charcot · public domain
+    https://commons.wikimedia.org/wiki/File:Drawing_by_Charcot_of_a_Parkinson's_disease_patient.jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/writing.webp
+    J.-M. Charcot, Lectures on the Diseases of the Nervous System · public domain
+    https://commons.wikimedia.org/wiki/File:Writing_by_a_Parkinson's_disease_patient.png
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/lewy.webp
+    From Lewy's 1920 book on the Haidar Pascha hospital · public domain
+    https://commons.wikimedia.org/wiki/File:Friedrich_Heinrich_Lewy.JPG
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/hornykiewicz.webp
+    Renate Heldt, 1985 · public domain
+    https://commons.wikimedia.org/wiki/File:Oleh_Hornykiewicz_(1985).jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/carlsson.webp
+    Vogler, 2011 · CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/)
+    https://commons.wikimedia.org/wiki/File:Arvid_Carlsson_2011a_(cropped).jpg
+    changes: resized, converted to WebP, toned to the page colours
+  public/img/lewy-he.webp
+    Tulemo · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+    https://commons.wikimedia.org/wiki/File:Lewy_body_in_the_substantia_nigra_from_a_person_with_Parkinson's_disease.jpg
+    changes: resized, converted to WebP
+  public/img/asyn.webp
+    Suraj Rajan · CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/)
+    https://commons.wikimedia.org/wiki/File:Lewy_bodies_(alpha_synuclein_inclusions).jpg
+    changes: resized, converted to WebP
+  public/img/blausen.webp
+    Blausen Medical (WikiJournal of Medicine, 2014) · CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
+    https://commons.wikimedia.org/wiki/File:Blausen_0704_ParkinsonsDisease.png
+    changes: resized, converted to WebP
+  public/img/tulip.webp
+    Kritzolina, Munich Botanical Garden · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+    https://commons.wikimedia.org/wiki/File:Tulpe_'Leen_van_der_Mark'_im_botanischen_Garten_in_M%C3%BCnchen_01.jpg
+    changes: resized, converted to WebP
+
+Dependencies
+------------
+  contracts/lib/forge-std   MIT or Apache-2.0
+  @openzeppelin/contracts   MIT
+  npm packages              their own licences (package.json)
+
+Not medical advice
+------------------
+Nothing in this project has been tested in a lab, and none of it is medical advice.
